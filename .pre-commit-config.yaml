@@ -1,0 +1,13 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.0
+    hooks:
+    - id: ruff
+      args: [--ignore,E501,--fix]
+    - id: ruff-format
+  - repo: https://github.com/BrightNight-Energy/conventional-commit-check
+    rev: 'v1.2.1'
+    hooks:
+      - id: first-commit-check
