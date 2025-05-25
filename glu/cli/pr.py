@@ -3,7 +3,7 @@ from typing import Annotated
 import typer
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
-from git import Commit
+from git import Commit, GitCommandError
 from github import Auth, Github
 from github.PullRequest import PullRequest
 from github.Repository import Repository
@@ -26,7 +26,12 @@ from glu.models import MatchedUser
 from glu.utils import (
     print_error,
 )
-from glu.git import get_repo_name, get_repo, get_first_commit_since_checkout
+from glu.git import (
+    get_repo_name,
+    get_repo,
+    get_first_commit_since_checkout,
+    remote_branch_in_sync,
+)
 from glu.jira import format_jira_ticket, get_jira_key
 from langchain_glean.chat_models import ChatGlean
 from langchain_core.messages import HumanMessage
@@ -38,7 +43,8 @@ app = typer.Typer()
 @app.command(short_help="Create a PR with description and transition JIRA ticket")
 def create(
     ticket: Annotated[
-        str | None, typer.Option("--ticket", "-t", help="Jira ticket number")
+        str | None,
+        typer.Option("--ticket", "-t", help="Jira ticket number", prompt=True),
     ] = None,
     project: Annotated[
         str | None,
@@ -64,6 +70,23 @@ def create(
 ):
     repo_name = get_repo_name()
     git = get_repo()
+
+    if git.is_dirty():
+        typer.confirm(
+            "You have uncommitted changes. Proceed with PR creation?", abort=True
+        )
+
+    try:
+        git.remotes["origin"].fetch(git.active_branch.name, prune=True)
+    except GitCommandError:
+        git.git.push("origin", git.active_branch.name)
+
+    if not remote_branch_in_sync(git.active_branch.name, repo=git):
+        confirm_push = typer.confirm(
+            "Local branch is not up to date with remote. Push to remote now?"
+        )
+        if confirm_push:
+            git.git.push("origin", git.active_branch.name)
 
     auth = Auth.Token(GITHUB_PAT)
     gh = Github(auth=auth)
