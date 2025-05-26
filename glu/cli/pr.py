@@ -130,15 +130,15 @@ def create(
             except GithubException as e:
                 print_error(f"Failed to add reviewer {selected_reviewer.login}: {e}")
 
-    rich.print("[grey]Generating description...[/]")
+    rich.print("[grey70]Generating description...[/]")
     pr_description = generate_description(gh, repo, pr, chat_provider)
     if pr_description:
         pr.edit(body=pr_description)
 
     rich.print(
-        f"Created PR in [red]{repo_name}[/] with title [bold green]{title}[/] :rocket:"
+        f":rocket: Created PR in [blue]{repo_name}[/] with title [bold green]{title}[/]"
     )
-    rich.print(f"\n[grey]{pr_description}[/]")
+    rich.print(f"\n[grey70]{pr_description}[/]\n")
 
     if not ticket:
         return
@@ -157,7 +157,7 @@ def create(
     ):
         jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
         rich.print(
-            f"Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/] :eyes:"
+            f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]"
         )
 
 

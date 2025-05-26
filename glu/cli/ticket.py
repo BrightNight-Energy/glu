@@ -89,5 +89,5 @@ def create(
 
     issue = jira.create_issue(fields)
 
-    rich.print(f"Created issue [bold red]{issue.key}[/] :page_with_curl:")
+    rich.print(f":page_with_curl: Created issue [bold red]{issue.key}[/]")
     rich.print(f"View at {issue.permalink()}")

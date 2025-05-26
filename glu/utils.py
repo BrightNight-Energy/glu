@@ -100,7 +100,7 @@ def filterable_menu(
     session: PromptSession = PromptSession()
     return session.prompt(
         HTML(
-            f"{prompt_text} <ansibrightblack>[use ↑/↓ arrows or type to select]</ansibrightblack> "
+            f"{prompt_text} <ansibrightblack>[use ↑/↓ arrows or type to select, press enter to end]</ansibrightblack> "
         ),
         completer=completer,
         complete_while_typing=True,
