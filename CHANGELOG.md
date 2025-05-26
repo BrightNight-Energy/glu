@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.2.0 (2025-05-26)
+
+### Features
+
+- Cli improvements ([#12](https://github.com/BrightNight-Energy/glu/pull/12),
+  [`8d4c922`](https://github.com/BrightNight-Energy/glu/commit/8d4c9223b37ce19d18c44fd50cfb8eab83c29fbc))
+
+
 ## v1.1.0 (2025-05-26)
 
 ### Features
