@@ -50,4 +50,4 @@ def format_jira_ticket(jira_key: str, ticket: str | int) -> str:
         )
         raise typer.Exit(1)
 
-    return f"[{jira_key}-{ticket_num}]"
+    return f"{jira_key}-{ticket_num}"

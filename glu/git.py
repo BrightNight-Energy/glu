@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import typer
-from git import Repo
+from git import Repo, GitCommandError
 
 from glu.utils import print_error
 
@@ -52,3 +52,34 @@ def get_first_commit_since_checkout(repo: Repo | None = None):
 
     # 3) iter_commits returns newest→oldest, so the last item is the _first_ commit
     return commits[-1]
+
+
+def remote_branch_in_sync(
+    branch_name: str, remote_name: str = "origin", repo: Repo | None = None
+) -> bool:
+    """
+    Returns True if:
+      - remote_name/branch_name exists, and
+      - its commit SHA == the local branch’s commit SHA.
+    Returns False otherwise (including if the remote branch doesn’t exist).
+    """
+    repo = repo or get_repo()
+
+    # 1) Make sure we have up-to-date remote refs
+    try:
+        repo.remotes[remote_name].fetch(branch_name, prune=True)
+    except GitCommandError:
+        # fetch failed (e.g. no such remote)
+        return False
+
+    # 2) Does the remote branch exist?
+    remote_ref_name = f"{remote_name}/{branch_name}"
+    refs = [ref.name for ref in repo.refs]
+    if remote_ref_name not in refs:
+        return False
+
+    # 3) Compare SHAs
+    local_sha = repo.heads[branch_name].commit.hexsha
+    remote_sha = repo.refs[remote_ref_name].commit.hexsha
+
+    return local_sha == remote_sha
