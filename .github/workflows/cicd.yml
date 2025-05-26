@@ -44,6 +44,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build package
         run: |
+          source .venv/bin/activate
           python -m build
       - name: Publish | Upload to GitHub Release Assets
         uses: python-semantic-release/publish-action@v10.0.2
