@@ -1,7 +1,12 @@
+from prompt_toolkit.validation import Validator
 from typer import Context
 import rich
-from langchain_core.language_models import BaseChatModel
-import os
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter, FuzzyCompleter
+from prompt_toolkit.shortcuts import CompleteStyle
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.formatted_text import HTML
 
 
 def get_kwargs(ctx: Context) -> dict[str, str | bool]:
@@ -36,16 +41,72 @@ def print_error(error: str) -> None:
     rich.print(f"[red][bold]Error:[/bold] {error}.[/red]")
 
 
-def get_chat_model() -> BaseChatModel | None:
-    if os.getenv("GLEAN_API_TOKEN"):
-        from langchain_glean.chat_models import ChatGlean
+def multi_select_menu(prompt_text: str, options: list[str]) -> list[str]:
+    """
+    Let the user pick zero or more items via filterable_menu.
+    Repeats until they press Enter on a blank selection.
+    """
+    remaining = options.copy()
+    selected: list[str] = []
 
-        return ChatGlean()
+    while True:
+        toolbar = HTML(f"Selected: {', '.join(selected)}") if selected else None
 
-    if os.getenv("OPENAI_API_KEY"):
-        from langchain_openai import ChatOpenAI
+        choice = filterable_menu(prompt_text, remaining, toolbar, enter_to_escape=True)
+        # If they hit Enter on blank (or ESC), filterable_menu will return "" or invalid, so break
+        if not choice:
+            break
 
-        return ChatOpenAI(model="o4-mini")
+        selected.append(choice)
+        remaining.remove(choice)
 
-    rich.print("[warning]No API key found. Skipping PR description generation.[/]")
-    return None
+        # If nothing left, bail out
+        if not remaining:
+            break
+
+    return selected
+
+
+def filterable_menu(
+    prompt_text: str,
+    options: list[str],
+    toolbar: HTML | None = None,
+    enter_to_escape: bool = False,
+) -> str:
+    # 1) Build a fuzzy completer over your options.
+    completer = FuzzyCompleter(WordCompleter(options, ignore_case=True))
+
+    # 2) Bind up/down to move through the visible suggestions, and open menu if not open.
+    kb = KeyBindings()
+
+    @kb.add("up")
+    def _(event):
+        buf = event.current_buffer
+        buf.start_completion(select_first=False)
+        buf.complete_previous()
+
+    @kb.add("down")
+    def _(event):
+        buf = event.current_buffer
+        buf.start_completion(select_first=False)
+        buf.complete_next()
+
+    validator = Validator.from_callable(
+        lambda text: (text == "" if enter_to_escape else False) or text in options,
+        error_message="Invalid selection; choose one of the list or press Enter to skip",
+        move_cursor_to_end=True,
+    )
+
+    session: PromptSession = PromptSession()
+    return session.prompt(
+        HTML(
+            f"{prompt_text} <ansibrightblack>[use ↑/↓ arrows or type to select, press enter to end]</ansibrightblack> "
+        ),
+        completer=completer,
+        complete_while_typing=True,
+        complete_style=CompleteStyle.COLUMN,
+        key_bindings=kb,
+        validator=validator,
+        validate_while_typing=False,
+        bottom_toolbar=toolbar,
+    )

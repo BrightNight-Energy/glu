@@ -7,8 +7,9 @@ from jira import JIRA
 from typer import Context
 
 from glu.config import JIRA_SERVER, EMAIL, JIRA_API_TOKEN, DEFAULT_JIRA_PROJECT
+from glu.git import get_repo_name
 from glu.utils import get_kwargs
-from glu.jira import get_user_from_jira
+from glu.jira import get_user_from_jira, get_jira_project
 
 app = typer.Typer()
 
@@ -49,8 +50,8 @@ def create(
 
     project = project or DEFAULT_JIRA_PROJECT
     if not project:
-        projects = [project.key for project in jira.projects()]
-        project = inquirer.select("Select project:", projects).execute()
+        repo_name = get_repo_name()
+        project = get_jira_project(jira, repo_name)
 
     if not body:
         choice = typer.prompt(
@@ -88,5 +89,5 @@ def create(
 
     issue = jira.create_issue(fields)
 
-    rich.print(f"Created issue [bold red]{issue.key}[/] :page_with_curl:")
+    rich.print(f":page_with_curl: Created issue [bold red]{issue.key}[/]")
     rich.print(f"View at {issue.permalink()}")

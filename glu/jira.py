@@ -4,7 +4,7 @@ from InquirerPy.base import Choice
 from jira import JIRA
 
 from glu.config import REPO_CONFIGS
-from glu.utils import print_error
+from glu.utils import print_error, filterable_menu
 
 
 def get_user_from_jira(jira: JIRA, user_query: str | None) -> dict[str, str]:
@@ -28,7 +28,7 @@ def get_user_from_jira(jira: JIRA, user_query: str | None) -> dict[str, str]:
     return {"id": choice}
 
 
-def get_jira_key(jira: JIRA, repo_name: str, project: str | None) -> str:
+def get_jira_project(jira: JIRA, repo_name: str, project: str | None = None) -> str:
     if default_project := REPO_CONFIGS.get(repo_name):
         return default_project.JIRA_KEY
 
@@ -37,7 +37,7 @@ def get_jira_key(jira: JIRA, repo_name: str, project: str | None) -> str:
     if project and project.upper() in [project.key for project in projects]:
         return project.upper()
 
-    selected_project = inquirer.select("Select project:", project_keys).execute()
+    selected_project = filterable_menu("Select project: ", project_keys)
     return selected_project
 
 
