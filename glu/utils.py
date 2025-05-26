@@ -1,5 +1,7 @@
 from typer import Context
 import rich
+from langchain_core.language_models import BaseChatModel
+import os
 
 
 def get_kwargs(ctx: Context) -> dict[str, str | bool]:
@@ -32,3 +34,18 @@ def get_kwargs(ctx: Context) -> dict[str, str | bool]:
 
 def print_error(error: str) -> None:
     rich.print(f"[red][bold]Error:[/bold] {error}.[/red]")
+
+
+def get_chat_model() -> BaseChatModel | None:
+    if os.getenv("GLEAN_API_TOKEN"):
+        from langchain_glean.chat_models import ChatGlean
+
+        return ChatGlean()
+
+    if os.getenv("OPENAI_API_KEY"):
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(model="o4-mini", temperature=0)
+
+    rich.print("[warning]No API key found. Skipping PR description generation.[/]")
+    return None
