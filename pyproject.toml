@@ -19,7 +19,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "build>=1.2.2.post1",
     "mypy>=1.15.0",
+    "python-semantic-release>=10.0.2",
     "ruff>=0.11.11",
     "types-toml>=0.10.8.20240310",
 ]
@@ -30,3 +32,8 @@ glu = "glu.cli.main:app"
 [build-system]
 requires = ["hatchling>=1.0"]
 build-backend = "hatchling.build"
+
+[tool.semantic_release]
+version_variables = ["glu/__init__.py:__version__"]
+changelog = true
+commit_message = "chore(release): v{version} [skip ci]"

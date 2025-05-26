@@ -32,7 +32,7 @@ def get_first_commit_since_checkout(repo: Repo | None = None):
 
     # 1) Find the SHA that HEAD pointed to immediately after the last checkout
     checkout_sha = None
-    for entry in head_ref.log():  # this walks the reflog
+    for entry in reversed(head_ref.log()):  # this walks the reflog
         # reflog messages look like: "checkout: moving from main to feature/foo"
         if entry.message.startswith("checkout: moving from"):
             checkout_sha = entry.newhexsha
