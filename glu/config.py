@@ -16,8 +16,10 @@ class EnvConfig(BaseModel):
     JIRA_READY_FOR_REVIEW_TRANSITION: str
     DEFAULT_JIRA_PROJECT: str | None = None
     GITHUB_PAT: str
-    GLEAN_API_TOKEN: str
-    GLEAN_INSTANCE: str
+    OPENAI_API_KEY: str | None = None
+    OPENAI_ORG_ID: str | None = None
+    GLEAN_API_TOKEN: str | None = None
+    GLEAN_INSTANCE: str | None = None
 
     @classmethod
     def defaults(cls) -> "EnvConfig":
@@ -28,8 +30,6 @@ class EnvConfig(BaseModel):
             JIRA_IN_PROGRESS_TRANSITION="Starting",
             JIRA_READY_FOR_REVIEW_TRANSITION="Ready for review",
             GITHUB_PAT="your_github_pat",
-            GLEAN_API_TOKEN="your_glean_api_token",
-            GLEAN_INSTANCE="your_glean_instance",
         )
 
 
@@ -81,5 +81,13 @@ DEFAULT_JIRA_PROJECT = config.env.DEFAULT_JIRA_PROJECT
 GITHUB_PAT = config.env.GITHUB_PAT
 
 # glean
-os.environ["GLEAN_API_TOKEN"] = config.env.GLEAN_API_TOKEN
-os.environ["GLEAN_INSTANCE"] = config.env.GLEAN_INSTANCE
+if glean_api_token := config.env.GLEAN_API_TOKEN:
+    os.environ["GLEAN_API_TOKEN"] = glean_api_token
+if glean_instance := config.env.GLEAN_INSTANCE:
+    os.environ["GLEAN_INSTANCE"] = glean_instance
+
+# openai
+if openai_api_key := config.env.OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = openai_api_key
+if openai_org_id := config.env.OPENAI_ORG_ID:
+    os.environ["OPENAI_ORG_ID"] = openai_org_id
