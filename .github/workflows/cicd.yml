@@ -1,9 +1,9 @@
-name: PROD Environment - CI/CD
+name: CI/CD
 
 on:
   push:
     branches:
-      - 'main'
+      - '**'
 
 env:
   PYTHON_VERSION: '3.13'
@@ -23,6 +23,7 @@ jobs:
 
   releases:
     name: Release all Github packages
+    if: github.event.ref == 'refs/heads/main'
     needs: [tests]
     runs-on: ubuntu-latest
     steps:
