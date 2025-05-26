@@ -1,19 +1,12 @@
 from typing import Annotated
 
 import typer
-from InquirerPy import inquirer
-from InquirerPy.base import Choice
 from git import Commit, GitCommandError
-from github import Auth, Github
-from github.PullRequest import PullRequest
-from github.Repository import Repository
-import datetime as dt
-from langchain_glean.chat_models import ChatGlean
+from github import Auth, Github, GithubException
 
 from jira import JIRA
-from thefuzz import fuzz
 
-from glu import ROOT_DIR
+from glu.ai import generate_description, prompt_for_chat_provider
 from glu.config import (
     GITHUB_PAT,
     JIRA_SERVER,
@@ -22,11 +15,10 @@ from glu.config import (
     JIRA_READY_FOR_REVIEW_TRANSITION,
     JIRA_IN_PROGRESS_TRANSITION,
 )
-from glu.github import get_members
-from glu.models import MatchedUser
+from glu.github import prompt_for_reviewers
+from glu.models import CHAT_PROVIDERS
 from glu.utils import (
     print_error,
-    get_chat_model,
 )
 from glu.git import (
     get_repo_name,
@@ -34,12 +26,17 @@ from glu.git import (
     get_first_commit_since_checkout,
     remote_branch_in_sync,
 )
-from glu.jira import format_jira_ticket, get_jira_key
+from glu.jira import format_jira_ticket, get_jira_project
 
-from langchain_core.messages import HumanMessage
 import rich
 
 app = typer.Typer()
+
+
+def complete_provider(incomplete: str):
+    for provider in CHAT_PROVIDERS:
+        if provider.startswith(incomplete):
+            yield provider
 
 
 @app.command(short_help="Create a PR with description and transition JIRA ticket")
@@ -67,6 +64,15 @@ def create(
             "-r",
             help="Requested reviewers (accepts multiple values)",
             show_default=False,
+        ),
+    ] = None,
+    provider: Annotated[
+        str | None,
+        typer.Option(
+            "--provider",
+            "-pr",
+            help="AI model provider",
+            autocompletion=complete_provider,
         ),
     ] = None,
 ):
@@ -99,10 +105,14 @@ def create(
 
     first_commit = get_first_commit_since_checkout()
 
-    jira_key = get_jira_key(jira, repo_name, project) if ticket else ""
+    jira_key = get_jira_project(jira, repo_name, project) if ticket else ""
 
     title = first_commit.summary
     body = _create_pr_body(first_commit, jira_key, ticket)
+
+    selected_reviewers = prompt_for_reviewers(gh, reviewers, repo_name, draft)
+
+    chat_provider = prompt_for_chat_provider(provider)
 
     pr = repo.create_pull(
         repo.default_branch,
@@ -113,41 +123,15 @@ def create(
     )
     pr.add_to_assignees(gh.get_user().login)
 
-    if not draft:
-        members = get_members(gh, repo_name)
-        if reviewers:
-            selected_reviewers = []
-            for i, reviewer in enumerate(reviewers):
-                matched_reviewers = [
-                    MatchedUser(member, fuzz.ratio(reviewer, member.login))
-                    for member in members
-                ]
-                sorted_reviewers = sorted(
-                    matched_reviewers, key=lambda x: x.score, reverse=True
-                )
-                if sorted_reviewers[0].score == 100:  # exact match
-                    selected_reviewers.append(sorted_reviewers[0].user)
-                    continue
+    if selected_reviewers:
+        for selected_reviewer in selected_reviewers:
+            try:
+                pr.create_review_request(selected_reviewer.login)
+            except GithubException as e:
+                print_error(f"Failed to add reviewer {selected_reviewer.login}: {e}")
 
-                selected_reviewer = inquirer.select(
-                    f"Select reviewer{f' #{i + 1}' if len(reviewers) > 1 else ''}:",
-                    [
-                        Choice(reviewer.user, reviewer.user.login)
-                        for reviewer in sorted_reviewers[:5]
-                    ],
-                ).execute()
-                selected_reviewers.append(selected_reviewer)
-        else:
-            selected_reviewers = inquirer.select(
-                "Select reviewers:",
-                [Choice(member, member.login) for member in members],
-                multiselect=True,
-                max_height=5,
-            ).execute()
-
-        pr.create_review_request([reviewer.login for reviewer in selected_reviewers])
-
-    pr_description = _generate_description(gh, repo, pr)
+    rich.print("[grey]Generating description...[/]")
+    pr_description = generate_description(gh, repo, pr, chat_provider)
     if pr_description:
         pr.edit(body=pr_description)
 
@@ -206,65 +190,3 @@ def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | 
         return body
 
     return body.replace(ticket, f"[{ticket_str}]")
-
-
-def _generate_description(gh: Github, repo: Repository, pr: PullRequest) -> str | None:
-    chat = get_chat_model()
-    if not chat:
-        return None
-
-    template_dir = ".github/pull_request_template.md"
-    try:
-        template_file = repo.get_contents(template_dir, ref="main")
-        if isinstance(template_file, list):
-            template = None
-        else:
-            template = template_file.decoded_content.decode()
-    except Exception:
-        template = None
-
-    if not template:
-        with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
-            template = f.read()
-
-    # informs whether to provide the diff or a URL (since indexing should be done)
-    is_newly_created_pr = dt.datetime.now(
-        dt.timezone.utc
-    ) - pr.created_at < dt.timedelta(minutes=15)
-    using_glean = isinstance(chat, ChatGlean)
-
-    pr_location = (
-        "diff below" if is_newly_created_pr or not using_glean else pr.html_url
-    )
-
-    pr_diff_str = ""
-    if is_newly_created_pr:
-        headers = {"Accept": "application/vnd.github.v3.diff"}
-        status, _, diff = gh._Github__requester.requestBlob(  # type: ignore
-            "GET", pr.url, headers=headers
-        )
-
-        if status != 200:
-            print_error(f"Failed to get PR diff ({status})")
-            raise typer.Exit(1)
-
-        pr_diff_str = f"PR diff:\n{diff}"
-
-    prompt = HumanMessage(
-        content=f"""
-        Provide a description for the PR {pr_location}. 
-        
-        Be concise and informative about the contents of the PR, relevant to someone
-        reviewing the PR. Write the description the following format:
-        {template}
-
-        PR body:
-        {pr.body}
-
-        {pr_diff_str}
-        """
-    )
-
-    response = chat.invoke([prompt])
-
-    return response.content  # type: ignore
