@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.1.0 (2025-05-26)
+
+### Features
+
+- Add support for using OpenAI, rather than Glean
+  ([#10](https://github.com/BrightNight-Energy/glu/pull/10),
+  [`23958ae`](https://github.com/BrightNight-Energy/glu/commit/23958ae9a1484957a41e4aa1155c3ee2367026f8))
+
+
 ## v1.0.1 (2025-05-26)
 
 ### Bug Fixes
