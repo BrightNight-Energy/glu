@@ -1,0 +1,52 @@
+name: PROD Environment - CI/CD
+
+on:
+  push:
+    branches:
+      - 'main'
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cached-venv
+      - name: Test service
+        run: |
+          source venv/bin/activate
+          ruff check
+          mypy glu --ignore-missing-imports
+
+  releases:
+    name: Release all Github packages
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history so semantic-release can resolve commits
+          token: ${{ secrets.CICD_RELEASE_GITHUB_TOKEN }}
+      - uses: ./.github/actions/cached-venv
+      - name: Create github release
+        id: release
+        uses: python-semantic-release/python-semantic-release@v10.0.2
+        with:
+          changelog: true
+          commit: true
+          push: true
+          tag: true
+          vcs_release: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build package
+        run: |
+          python -m build
+      - name: Publish | Upload to GitHub Release Assets
+        uses: python-semantic-release/publish-action@v10.0.2
+        if: steps.release.outputs.released == 'true'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.release.outputs.tag }}
