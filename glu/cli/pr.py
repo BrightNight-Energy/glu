@@ -8,6 +8,7 @@ from github import Auth, Github
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 import datetime as dt
+from langchain_glean.chat_models import ChatGlean
 
 from jira import JIRA
 from thefuzz import fuzz
@@ -25,6 +26,7 @@ from glu.github import get_members
 from glu.models import MatchedUser
 from glu.utils import (
     print_error,
+    get_chat_model,
 )
 from glu.git import (
     get_repo_name,
@@ -33,7 +35,7 @@ from glu.git import (
     remote_branch_in_sync,
 )
 from glu.jira import format_jira_ticket, get_jira_key
-from langchain_glean.chat_models import ChatGlean
+
 from langchain_core.messages import HumanMessage
 import rich
 
@@ -146,7 +148,8 @@ def create(
         pr.create_review_request([reviewer.login for reviewer in selected_reviewers])
 
     pr_description = _generate_description(gh, repo, pr)
-    pr.edit(body=pr_description)
+    if pr_description:
+        pr.edit(body=pr_description)
 
     rich.print(
         f"Created PR in [red]{repo_name}[/] with title [bold green]{title}[/] :rocket:"
@@ -205,8 +208,10 @@ def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | 
     return body.replace(ticket, f"[{ticket_str}]")
 
 
-def _generate_description(gh: Github, repo: Repository, pr: PullRequest) -> str:
-    chat = ChatGlean()
+def _generate_description(gh: Github, repo: Repository, pr: PullRequest) -> str | None:
+    chat = get_chat_model()
+    if not chat:
+        return None
 
     template_dir = ".github/pull_request_template.md"
     try:
@@ -222,17 +227,15 @@ def _generate_description(gh: Github, repo: Repository, pr: PullRequest) -> str:
         with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
             template = f.read()
 
-    instructions = """
-        Be concise and informative about the contents of the PR, relevant to someone
-        reviewing the PR.
-    """
-
     # informs whether to provide the diff or a URL (since indexing should be done)
     is_newly_created_pr = dt.datetime.now(
         dt.timezone.utc
     ) - pr.created_at < dt.timedelta(minutes=15)
+    using_glean = isinstance(chat, ChatGlean)
 
-    pr_location = "diff below" if is_newly_created_pr else pr.html_url
+    pr_location = (
+        "diff below" if is_newly_created_pr or not using_glean else pr.html_url
+    )
 
     pr_diff_str = ""
     if is_newly_created_pr:
@@ -255,8 +258,6 @@ def _generate_description(gh: Github, repo: Repository, pr: PullRequest) -> str:
         reviewing the PR. Write the description the following format:
         {template}
 
-        {instructions}
-        
         PR body:
         {pr.body}
 

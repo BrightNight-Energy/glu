@@ -9,6 +9,7 @@ dependencies = [
     "inquirerpy>=0.3.4",
     "jira>=3.8.0",
     "langchain-glean>=0.3.1",
+    "langchain-openai>=0.3.18",
     "pydantic>=2.11.5",
     "pygithub>=2.6.1",
     "python-dotenv>=1.1.0",
@@ -34,5 +35,6 @@ requires = ["hatchling>=1.0"]
 build-backend = "hatchling.build"
 
 [tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
 version_variables = ["glu/__init__.py:__version__"]
 commit_message = "chore(release): v{version} [skip ci]"
