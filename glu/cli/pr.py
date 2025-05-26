@@ -1,10 +1,9 @@
 from typing import Annotated
 
 import typer
-from InquirerPy import inquirer
-from InquirerPy.base import Choice
 from git import Commit, GitCommandError
 from github import Auth, Github
+from github.NamedUser import NamedUser
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 import datetime as dt
@@ -27,6 +26,8 @@ from glu.models import MatchedUser
 from glu.utils import (
     print_error,
     get_chat_model,
+    filterable_menu,
+    multi_select_menu,
 )
 from glu.git import (
     get_repo_name,
@@ -34,7 +35,7 @@ from glu.git import (
     get_first_commit_since_checkout,
     remote_branch_in_sync,
 )
-from glu.jira import format_jira_ticket, get_jira_key
+from glu.jira import format_jira_ticket, get_jira_project
 
 from langchain_core.messages import HumanMessage
 import rich
@@ -99,24 +100,15 @@ def create(
 
     first_commit = get_first_commit_since_checkout()
 
-    jira_key = get_jira_key(jira, repo_name, project) if ticket else ""
+    jira_key = get_jira_project(jira, repo_name, project) if ticket else ""
 
     title = first_commit.summary
     body = _create_pr_body(first_commit, jira_key, ticket)
 
-    pr = repo.create_pull(
-        repo.default_branch,
-        git.active_branch.name,
-        title=title,
-        body=body or "",
-        draft=draft,
-    )
-    pr.add_to_assignees(gh.get_user().login)
-
+    selected_reviewers: list[NamedUser] = []
     if not draft:
         members = get_members(gh, repo_name)
         if reviewers:
-            selected_reviewers = []
             for i, reviewer in enumerate(reviewers):
                 matched_reviewers = [
                     MatchedUser(member, fuzz.ratio(reviewer, member.login))
@@ -129,22 +121,37 @@ def create(
                     selected_reviewers.append(sorted_reviewers[0].user)
                     continue
 
-                selected_reviewer = inquirer.select(
+                selected_reviewer_login = filterable_menu(
                     f"Select reviewer{f' #{i + 1}' if len(reviewers) > 1 else ''}:",
-                    [
-                        Choice(reviewer.user, reviewer.user.login)
-                        for reviewer in sorted_reviewers[:5]
-                    ],
-                ).execute()
+                    [reviewer.user.login for reviewer in sorted_reviewers[:5]],
+                )
+                selected_reviewer = next(
+                    reviewer.user
+                    for reviewer in sorted_reviewers[:5]
+                    if reviewer.user.login == selected_reviewer_login
+                )
                 selected_reviewers.append(selected_reviewer)
         else:
-            selected_reviewers = inquirer.select(
+            selected_reviewers_login = multi_select_menu(
                 "Select reviewers:",
-                [Choice(member, member.login) for member in members],
-                multiselect=True,
-                max_height=5,
-            ).execute()
+                [member.login for member in members],
+            )
+            selected_reviewers = [
+                reviewer
+                for reviewer in members
+                if reviewer.login in selected_reviewers_login
+            ]
 
+    pr = repo.create_pull(
+        repo.default_branch,
+        git.active_branch.name,
+        title=title,
+        body=body or "",
+        draft=draft,
+    )
+    pr.add_to_assignees(gh.get_user().login)
+
+    if selected_reviewers:
         pr.create_review_request([reviewer.login for reviewer in selected_reviewers])
 
     pr_description = _generate_description(gh, repo, pr)
