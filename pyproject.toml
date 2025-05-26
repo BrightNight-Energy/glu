@@ -35,7 +35,5 @@ build-backend = "hatchling.build"
 
 [tool.semantic_release]
 version_variables = ["glu/__init__.py:__version__"]
-upload_to_release = true
-upload_to_repository = false
 changelog = true
 commit_message = "chore(release): v{version} [skip ci]"
