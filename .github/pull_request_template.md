@@ -1,6 +1,6 @@
 ### Description
 
-- **Jira Ticket**: [PA-XXXX]
+- **Jira Ticket**: [GLU-XXXX]
 - **Summary**: 
 - **Implementation details**: 
 
