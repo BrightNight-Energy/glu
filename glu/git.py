@@ -6,8 +6,8 @@ from git import Repo, GitCommandError
 from glu.utils import print_error
 
 
-def get_repo_name() -> str:
-    repo = get_repo()
+def get_repo_name(repo: Repo | None = None) -> str:
+    repo = repo or get_repo()
 
     if not len(repo.remotes):
         print_error("No remote found for git config")

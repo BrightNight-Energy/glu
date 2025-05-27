@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import typer
-from git import Commit, GitCommandError
+from git import Commit, GitCommandError, InvalidGitRepositoryError
 from github import Auth, Github, GithubException
 
 from jira import JIRA
@@ -15,8 +15,7 @@ from glu.config import (
     JIRA_READY_FOR_REVIEW_TRANSITION,
     JIRA_IN_PROGRESS_TRANSITION,
 )
-from glu.github import prompt_for_reviewers
-from glu.models import CHAT_PROVIDERS
+from glu.gh import prompt_for_reviewers
 from glu.utils import (
     print_error,
 )
@@ -31,12 +30,6 @@ from glu.jira import format_jira_ticket, get_jira_project
 import rich
 
 app = typer.Typer()
-
-
-def complete_provider(incomplete: str):
-    for provider in CHAT_PROVIDERS:
-        if provider.startswith(incomplete):
-            yield provider
 
 
 @app.command(short_help="Create a PR with description and transition JIRA ticket")
@@ -72,12 +65,15 @@ def create(
             "--provider",
             "-pr",
             help="AI model provider",
-            autocompletion=complete_provider,
         ),
     ] = None,
 ):
-    repo_name = get_repo_name()
-    git = get_repo()
+    try:
+        git = get_repo()
+        repo_name = get_repo_name(git)
+    except InvalidGitRepositoryError:
+        print_error("Not valid a git repository")
+        raise typer.Exit(1)
 
     if git.is_dirty():
         typer.confirm(
