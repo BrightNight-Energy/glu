@@ -1,52 +1,46 @@
 from typing import Annotated
 
+import rich
 import typer
 from git import Commit, GitCommandError, InvalidGitRepositoryError
 from github import Auth, Github, GithubException
-
 from jira import JIRA
 
 from glu.ai import generate_description, prompt_for_chat_provider
 from glu.config import (
-    GITHUB_PAT,
-    JIRA_SERVER,
     EMAIL,
+    GITHUB_PAT,
     JIRA_API_TOKEN,
-    JIRA_READY_FOR_REVIEW_TRANSITION,
     JIRA_IN_PROGRESS_TRANSITION,
+    JIRA_READY_FOR_REVIEW_TRANSITION,
+    JIRA_SERVER,
 )
 from glu.gh import prompt_for_reviewers
-from glu.utils import (
-    print_error,
-)
 from glu.git import (
-    get_repo_name,
-    get_repo,
     get_first_commit_since_checkout,
+    get_repo,
+    get_repo_name,
     remote_branch_in_sync,
 )
 from glu.jira import format_jira_ticket, get_jira_project
-
-import rich
+from glu.utils import (
+    print_error,
+)
 
 app = typer.Typer()
 
 
 @app.command(short_help="Create a PR with description and transition JIRA ticket")
-def create(
+def create(  # noqa: C901
     ticket: Annotated[
         str | None,
         typer.Option("--ticket", "-t", help="Jira ticket number", prompt=True),
     ] = None,
     project: Annotated[
         str | None,
-        typer.Option(
-            "--project", "-p", help="Jira project (defaults to default Jira project)"
-        ),
+        typer.Option("--project", "-p", help="Jira project (defaults to default Jira project)"),
     ] = None,
-    draft: Annotated[
-        bool, typer.Option("--draft", "-d", help="Mark as draft PR")
-    ] = False,
+    draft: Annotated[bool, typer.Option("--draft", "-d", help="Mark as draft PR")] = False,
     ready_for_review: Annotated[
         bool, typer.Option(help="Transition ticket to Ready for review")
     ] = True,
@@ -71,14 +65,12 @@ def create(
     try:
         git = get_repo()
         repo_name = get_repo_name(git)
-    except InvalidGitRepositoryError:
+    except InvalidGitRepositoryError as err:
         print_error("Not valid a git repository")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from err
 
     if git.is_dirty():
-        typer.confirm(
-            "You have uncommitted changes. Proceed with PR creation?", abort=True
-        )
+        typer.confirm("You have uncommitted changes. Proceed with PR creation?", abort=True)
 
     try:
         git.remotes["origin"].fetch(git.active_branch.name, prune=True)
@@ -131,10 +123,9 @@ def create(
     if pr_description:
         pr.edit(body=pr_description)
 
-    rich.print(
-        f":rocket: Created PR in [blue]{repo_name}[/] with title [bold green]{title}[/]"
-    )
     rich.print(f"\n[grey70]{pr_description}[/]\n")
+    rich.print(f":rocket: Created PR in [blue]{repo_name}[/] with title [bold green]{title}[/]")
+    rich.print(f"[dark violet]https://github.com/{repo_name}/pull/{pr.number}[/]")
 
     if not ticket:
         return
@@ -146,27 +137,17 @@ def create(
     if JIRA_IN_PROGRESS_TRANSITION in transitions:
         jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
 
-    if (
-        not draft
-        and ready_for_review
-        and JIRA_READY_FOR_REVIEW_TRANSITION in transitions
-    ):
+    if not draft and ready_for_review and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
         jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
-        rich.print(
-            f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]"
-        )
+        rich.print(f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]")
 
 
 def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | None:
-    commit_message = (
-        commit.message if isinstance(commit.message, str) else commit.message.decode()
-    )
+    commit_message = commit.message if isinstance(commit.message, str) else commit.message.decode()
     try:
         body = (
             commit_message.replace(
-                commit.summary
-                if isinstance(commit.summary, str)
-                else commit.summary.decode(),
+                commit.summary if isinstance(commit.summary, str) else commit.summary.decode(),
                 "",
             )
             .lstrip()

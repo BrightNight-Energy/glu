@@ -1,7 +1,8 @@
-from pathlib import Path
 import os
+from pathlib import Path
+
 import toml
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 class RepoConfig(BaseModel):

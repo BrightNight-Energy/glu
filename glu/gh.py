@@ -4,7 +4,7 @@ from github.NamedUser import NamedUser
 from thefuzz import fuzz
 
 from glu.models import MatchedUser
-from glu.utils import print_error, filterable_menu, multi_select_menu
+from glu.utils import filterable_menu, multi_select_menu, print_error
 
 
 def prompt_for_reviewers(
@@ -20,20 +20,13 @@ def prompt_for_reviewers(
             "Select reviewers:",
             [member.login for member in members],
         )
-        return [
-            reviewer
-            for reviewer in members
-            if reviewer.login in selected_reviewers_login
-        ]
+        return [reviewer for reviewer in members if reviewer.login in selected_reviewers_login]
 
     for i, reviewer in enumerate(reviewers):
         matched_reviewers = [
-            MatchedUser(member, fuzz.ratio(reviewer, member.login))
-            for member in members
+            MatchedUser(member, fuzz.ratio(reviewer, member.login)) for member in members
         ]
-        sorted_reviewers = sorted(
-            matched_reviewers, key=lambda x: x.score, reverse=True
-        )
+        sorted_reviewers = sorted(matched_reviewers, key=lambda x: x.score, reverse=True)
         if sorted_reviewers[0].score == 100:  # exact match
             selected_reviewers.append(sorted_reviewers[0].user)
             continue
