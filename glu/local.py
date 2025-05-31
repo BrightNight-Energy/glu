@@ -1,8 +1,13 @@
 from pathlib import Path
 
+import rich
 import typer
-from git import GitCommandError, Repo
+from git import Commit, GitCommandError, HookExecutionError, Repo
+from InquirerPy import inquirer
 
+from glu.ai import generate_commit_message
+from glu.config import PREFERENCES
+from glu.models import ChatProvider, CommitGeneration
 from glu.utils import print_error
 
 
@@ -22,7 +27,7 @@ def get_repo() -> Repo:
     return Repo(cwd, search_parent_directories=True)
 
 
-def get_first_commit_since_checkout(repo: Repo | None = None):
+def get_first_commit_since_checkout(repo: Repo | None = None) -> Commit:
     """
     Return the first commit made on the current branch since it was last checked out.
     If no new commits have been made, returns None.
@@ -83,3 +88,65 @@ def remote_branch_in_sync(
     remote_sha = repo.refs[remote_ref_name].commit.hexsha
 
     return local_sha == remote_sha
+
+
+def get_git_diff(repo: Repo | None = None) -> str:
+    repo = repo or get_repo()
+    return repo.git.diff("HEAD")
+
+
+def generate_commit_with_ai(
+    chat_provider: ChatProvider | None,
+    local_repo: Repo,
+) -> CommitGeneration:
+    diff = get_git_diff(local_repo)
+    commit_data = generate_commit_message(chat_provider, diff)
+
+    if PREFERENCES.auto_accept_generated_commits:
+        return commit_data
+
+    rich.print(f"[grey70]Proposed commit:[/]\n{commit_data.message}\n")
+
+    choices = ["Accept", "Edit", "Exit"]
+
+    proceed_choice = inquirer.select(
+        "How would you like to proceed?",
+        choices,
+    ).execute()
+
+    match proceed_choice:
+        case "Accept":
+            return commit_data
+        case "Edit":
+            edited = typer.edit(commit_data.message)
+            if edited is None:
+                print_error("No description provided")
+                raise typer.Exit(1)
+            title_with_type = edited.split("\n\n")[0].strip()
+            body = edited.split("\n\n")[1].strip()
+            return CommitGeneration(
+                title=title_with_type.split(":")[1], body=body, type=title_with_type.split(":")[0]
+            )
+        case _:
+            raise typer.Exit(0)
+
+
+def create_commit(local_repo: Repo, message: str, retry: int = 0) -> Commit:
+    try:
+        local_repo.git.add(all=True)
+        return local_repo.index.commit(message)
+    except HookExecutionError as err:
+        if retry == 0:
+            rich.print("[warning]Pre-commit hooks failed, retrying...[/]")
+            return create_commit(local_repo, message, retry + 1)
+
+        rich.print(err)
+        raise typer.Exit(1) from err
+
+
+def push(local_repo: Repo) -> None:
+    try:
+        local_repo.git.push("origin", local_repo.active_branch.name)
+    except GitCommandError as err:
+        rich.print(err)
+        raise typer.Exit(1) from err
