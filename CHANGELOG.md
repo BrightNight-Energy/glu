@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.4.0 (2025-05-31)
+
+### Features
+
+- Support local git operations and ai-driven commit/ticket generation
+  ([#20](https://github.com/BrightNight-Energy/glu/pull/20),
+  [`a5a1066`](https://github.com/BrightNight-Energy/glu/commit/a5a106696e31d6f043c9e8c9ee4431f58899b23b))
+
+
 ## v1.3.1 (2025-05-31)
 
 ### Bug Fixes
