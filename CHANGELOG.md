@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.3.0 (2025-05-31)
+
+### Features
+
+- Add ability to generate Jira tickets with AI
+  ([#14](https://github.com/BrightNight-Energy/glu/pull/14),
+  [`f2b3d75`](https://github.com/BrightNight-Energy/glu/commit/f2b3d758276aa5539d1ca19af53be4005884c722))
+
+
 ## v1.2.0 (2025-05-26)
 
 ### Features
