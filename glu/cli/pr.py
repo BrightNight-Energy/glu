@@ -4,9 +4,13 @@ import rich
 import typer
 from git import Commit, GitCommandError, InvalidGitRepositoryError
 from github import Auth, Github, GithubException
+from InquirerPy import inquirer
 from jira import JIRA
 
-from glu.ai import generate_description, prompt_for_chat_provider
+from glu.ai import (
+    generate_description,
+    prompt_for_chat_provider,
+)
 from glu.config import (
     EMAIL,
     GITHUB_PAT,
@@ -16,13 +20,22 @@ from glu.config import (
     JIRA_SERVER,
 )
 from glu.gh import prompt_for_reviewers
-from glu.git import (
+from glu.jira import (
+    create_ticket,
+    format_jira_ticket,
+    generate_ticket_with_ai,
+    get_jira_issuetypes,
+    get_jira_project,
+    get_user_from_jira,
+)
+from glu.local import (
+    commit,
+    generate_commit_with_ai,
     get_first_commit_since_checkout,
     get_repo,
     get_repo_name,
     remote_branch_in_sync,
 )
-from glu.jira import format_jira_ticket, get_jira_project
 from glu.utils import (
     print_error,
 )
@@ -30,11 +43,11 @@ from glu.utils import (
 app = typer.Typer()
 
 
-@app.command(short_help="Create a PR with description and transition JIRA ticket")
+@app.command(short_help="Create a PR with description")
 def create(  # noqa: C901
     ticket: Annotated[
         str | None,
-        typer.Option("--ticket", "-t", help="Jira ticket number", prompt=True),
+        typer.Option("--ticket", "-t", help="Jira ticket number"),
     ] = None,
     project: Annotated[
         str | None,
@@ -63,26 +76,55 @@ def create(  # noqa: C901
     ] = None,
 ):
     try:
-        git = get_repo()
-        repo_name = get_repo_name(git)
+        local_repo = get_repo()
+        repo_name = get_repo_name(local_repo)
     except InvalidGitRepositoryError as err:
         print_error("Not valid a git repository")
         raise typer.Exit(1) from err
 
-    if git.is_dirty():
-        typer.confirm("You have uncommitted changes. Proceed with PR creation?", abort=True)
+    chat_provider = prompt_for_chat_provider(provider)
+
+    if local_repo.is_dirty():
+        commit_choice = inquirer.select(
+            "You have uncommitted changes.",
+            [
+                "Commit and push with AI message",
+                "Commit and push with manual message",
+                "Proceed anyway",
+            ],
+        ).execute()
+        match commit_choice:
+            case "Commit and push with AI message":
+                rich.print("[grey70]Generating commit...[/]\n")
+                commit_data = generate_commit_with_ai(chat_provider, local_repo)
+
+                commit(local_repo, commit_data.message)
+                local_repo.git.push("origin", local_repo.active_branch.name)
+            case "Commit and push with manual message":
+                commit_message = typer.edit("")
+                if not commit_message:
+                    print_error("No commit message provided")
+                    raise typer.Exit(0)
+
+                commit(local_repo, commit_message)
+                local_repo.git.push("origin", local_repo.active_branch.name)
+            case "Proceed anyway":
+                pass
+            case _:
+                print_error("No matching choice for commit was provided")
+                raise typer.Exit(1)
 
     try:
-        git.remotes["origin"].fetch(git.active_branch.name, prune=True)
+        local_repo.remotes["origin"].fetch(local_repo.active_branch.name, prune=True)
     except GitCommandError:
-        git.git.push("origin", git.active_branch.name)
+        local_repo.git.push("origin", local_repo.active_branch.name)
 
-    if not remote_branch_in_sync(git.active_branch.name, repo=git):
+    if not remote_branch_in_sync(local_repo.active_branch.name, repo=local_repo):
         confirm_push = typer.confirm(
             "Local branch is not up to date with remote. Push to remote now?"
         )
         if confirm_push:
-            git.git.push("origin", git.active_branch.name)
+            local_repo.git.push("origin", local_repo.active_branch.name)
 
     auth = Auth.Token(GITHUB_PAT)
     gh = Github(auth=auth)
@@ -93,18 +135,16 @@ def create(  # noqa: C901
 
     first_commit = get_first_commit_since_checkout()
 
-    jira_key = get_jira_project(jira, repo_name, project) if ticket else ""
+    jira_project = get_jira_project(jira, repo_name, project) if ticket else ""
 
     title = first_commit.summary
-    body = _create_pr_body(first_commit, jira_key, ticket)
+    body = _create_pr_body(first_commit, jira_project, ticket)
 
     selected_reviewers = prompt_for_reviewers(gh, reviewers, repo_name, draft)
 
-    chat_provider = prompt_for_chat_provider(provider)
-
     pr = repo.create_pull(
         repo.default_branch,
-        git.active_branch.name,
+        local_repo.active_branch.name,
         title=title,
         body=body or "",
         draft=draft,
@@ -128,9 +168,34 @@ def create(  # noqa: C901
     rich.print(f"[dark violet]https://github.com/{repo_name}/pull/{pr.number}[/]")
 
     if not ticket:
-        return
+        ticket_choice = typer.prompt(
+            "Ticket [enter #, enter (c) to create, or Enter to skip]", default=""
+        )
+        if ticket_choice.lower() == "c":
+            issuetypes = get_jira_issuetypes(jira, jira_project)
+            ticket_data = generate_ticket_with_ai(
+                repo_name, chat_provider, issuetypes=issuetypes, pr_description=pr_description
+            )
 
-    ticket_id = format_jira_ticket(jira_key, ticket)
+            reporter_ref = get_user_from_jira(jira, user_query=None)
+            assignee_ref = get_user_from_jira(jira, user_query=None)
+
+            jira_issue = create_ticket(
+                jira,
+                jira_project,
+                ticket_data.issuetype,
+                ticket_data.summary,
+                ticket_data.description,
+                reporter_ref,
+                assignee_ref,
+            )
+            ticket = jira_issue.key
+        elif ticket_choice.isdigit():
+            ticket = ticket_choice
+        else:
+            return
+
+    ticket_id = format_jira_ticket(jira_project, ticket or "")
 
     transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
 

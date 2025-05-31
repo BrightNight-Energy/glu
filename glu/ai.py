@@ -12,10 +12,11 @@ from InquirerPy import inquirer
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_glean import ChatGlean
+from pydantic import ValidationError
 
 from glu import ROOT_DIR
-from glu.config import JIRA_ISSUE_TEMPLATES, REPO_CONFIGS
-from glu.models import ChatProvider, TicketGeneration
+from glu.config import JIRA_ISSUE_TEMPLATES, PREFERENCES, REPO_CONFIGS
+from glu.models import ChatProvider, CommitGeneration, TicketGeneration
 from glu.utils import print_error
 
 
@@ -85,10 +86,12 @@ def generate_description(
 
 
 def generate_ticket(
-    ai_prompt: str,
-    issuetype: str,
     repo_name: str | None,
     chat_provider: ChatProvider | None,
+    issuetype: str | None = None,
+    issuetypes: list[str] | None = None,
+    ai_prompt: str | None = None,
+    pr_description: str | None = None,
     requested_changes: str | None = None,
     previous_attempt: TicketGeneration | None = None,
     previous_error: str | None = None,
@@ -101,6 +104,21 @@ def generate_ticket(
     chat = _get_chat_model(chat_provider)
     if not chat:
         raise typer.Exit(1)
+
+    if ai_prompt:
+        context = f"user prompt: {ai_prompt}."
+    elif pr_description:
+        context = f"PR description:\n{pr_description}."
+    else:
+        print_error("No context provided to generate ticket.")
+        raise typer.Exit(1)
+
+    if not issuetype:
+        if not issuetypes:
+            print_error("No issuetype provided when generating ticket without provided issuetype.")
+            raise typer.Exit(1)
+
+        issuetype = _generate_issuetype(chat, issuetypes, context)
 
     default_template = """
     Description:
@@ -116,6 +134,7 @@ def generate_ticket(
         "description": "{ticket description}",
         "summary": "{ticket summary, 15 words or less}",
     }
+
     error = f"Error on previous attempt: {previous_error}" if previous_error else ""
     changes = (
         f"Requested changes from previous generation: {requested_changes}\n\n{
@@ -131,7 +150,7 @@ def generate_ticket(
         {changes}
 
         Provide a description and summary for a Jira {issuetype} ticket
-        given the user prompt: {ai_prompt}.
+        given the {context}.
 
         The summary should be as specific as possible to the goal of the ticket.
 
@@ -152,38 +171,31 @@ def generate_ticket(
 
     try:
         parsed = json.loads(response.content)  # type: ignore
-        if not parsed.get("description") or not parsed.get("summary"):
+        return TicketGeneration.model_validate(parsed | {"issuetype": issuetype})
+    except (JSONDecodeError, ValidationError) as err:
+        if isinstance(err, JSONDecodeError):
             error = (
-                f"Your response was in invalid format ({parsed}). Make sure it is in format of: "
+                f"Your response was not in valid JSON format. Make sure it is in format of: "
                 f"{json.dumps(response_format)}"
             )
-            return generate_ticket(
-                ai_prompt,
-                issuetype,
-                repo_name,
-                chat_provider,
-                requested_changes,
-                previous_attempt,
-                error,
-                retry + 1,
+        else:
+            error = (
+                f"Your response was in invalid format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}. Error: {err}"
             )
-    except JSONDecodeError:
-        error = (
-            f"Your response was not in valid JSON format. Make sure it is in format of: "
-            f"{json.dumps(response_format)}"
-        )
+
         return generate_ticket(
-            ai_prompt,
-            issuetype,
             repo_name,
             chat_provider,
+            issuetype,
+            issuetypes,
+            ai_prompt,
+            pr_description,
             requested_changes,
             previous_attempt,
             error,
             retry + 1,
         )
-
-    return TicketGeneration.model_validate(parsed)
 
 
 def prompt_for_chat_provider(
@@ -211,7 +223,101 @@ def prompt_for_chat_provider(
     if len(providers) == 1:
         return providers[0]
 
+    if PREFERENCES.preferred_provider in providers:
+        return PREFERENCES.preferred_provider
+
     return inquirer.select("Select provider:", providers).execute()
+
+
+def generate_commit_message(
+    chat_provider: ChatProvider | None,
+    diff: str,
+    error: str | None = None,
+    retry: int = 0,
+) -> CommitGeneration:
+    if retry > 2:
+        print_error(f"Failed to generate commit after {retry} attempts")
+        raise typer.Exit(1)
+
+    if not chat_provider:
+        print_error("Can't generate commit message with no API key")
+        raise typer.Exit(1)
+
+    response_format = {
+        "title": "{commit title}",
+        "type": "{conventional commit type}",
+        "body": "{commit body, bullet-pointed list}",
+    }
+
+    prompt = HumanMessage(
+        content=f"""
+        {error}
+
+        Provide a commit message for the following diff:
+        {diff}
+
+        Be concise in the body, using bullets to give a high level summary. Limit
+        to 5 bullets.
+
+        Your response should be in format of {json.dumps(response_format)}
+        """
+    )
+
+    chat = _get_chat_model(chat_provider)
+
+    response = chat.invoke([prompt])  # type: ignore
+
+    try:
+        parsed = json.loads(response.content)  # type: ignore
+        return CommitGeneration.model_validate(parsed)
+    except (JSONDecodeError, ValidationError) as err:
+        if isinstance(err, JSONDecodeError):
+            error = (
+                f"Your response was not in valid JSON format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}"
+            )
+        else:
+            error = (
+                f"Your response was in invalid format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}. Error: {err}"
+            )
+
+        return generate_commit_message(chat_provider, diff, error, retry + 1)
+
+
+def _generate_issuetype(
+    chat: BaseChatModel,
+    issuetypes: list[str],
+    context: str,
+    error: str | None = None,
+    retry: int = 0,
+) -> str:
+    if retry > 2:
+        print_error(f"Failed to generate issuetype after {retry} attempts")
+        raise typer.Exit(1)
+
+    issuetypes_str = ", ".join(f"'{issuetype}'" for issuetype in issuetypes)
+
+    prompt = HumanMessage(
+        content=f"""
+        {error}
+
+        Provide the issue type for a Jira ticket
+        given the {context}.
+
+        The issue type should be one of: {issuetypes_str}.
+
+        Your response should be simply the issue type, NOTHING else.
+        """
+    )
+
+    response = chat.invoke([prompt])
+
+    if response in (issuetypes or []):
+        return response  # type: ignore
+
+    error = f"Invalid issuetype: {response}. Should be one of: {issuetypes_str}."
+    return _generate_issuetype(chat, issuetypes, context, error)
 
 
 def _get_chat_model(provider: ChatProvider | None) -> BaseChatModel | None:
