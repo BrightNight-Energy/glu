@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 
 import toml
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
+
+from glu.models import ChatProvider
 
 
 class RepoConfig(BaseModel):
@@ -39,10 +41,23 @@ class EnvConfig(BaseModel):
         )
 
 
+class Preferences(BaseModel):
+    auto_accept_generated_commits: bool = False
+    preferred_provider: ChatProvider | None = None
+
+
 class Config(BaseModel):
     env: EnvConfig
+    preferences: Preferences = Preferences()
     repos: dict[str, RepoConfig] = Field(default_factory=dict)
     jira_issue_config: dict[str, JiraIssueTemplateConfig] = Field(default_factory=dict)
+
+    @classmethod
+    @field_validator("jira_issue_config")
+    def validate_jira_issue_config(
+        cls, v: dict[str, JiraIssueTemplateConfig]
+    ) -> dict[str, JiraIssueTemplateConfig]:
+        return {k.lower(): data for k, data in v.items()}
 
 
 def config_path() -> Path:
@@ -99,3 +114,5 @@ if openai_api_key := config.env.openai_api_key:
     os.environ["OPENAI_API_KEY"] = openai_api_key
 if openai_org_id := config.env.openai_org_id:
     os.environ["OPENAI_ORG_ID"] = openai_org_id
+
+PREFERENCES = config.preferences

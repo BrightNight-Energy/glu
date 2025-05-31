@@ -27,8 +27,8 @@ def main(
         typer.echo(ctx.get_help())
 
 
-app.add_typer(pr.app, name="pr")
-app.add_typer(ticket.app, name="ticket")
+app.add_typer(pr.app, name="pr", help="Interact with pull requests.")
+app.add_typer(ticket.app, name="ticket", help="Interact with Jira tickets.")
 
 if __name__ == "__main__":
     app()
