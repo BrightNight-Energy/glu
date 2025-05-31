@@ -1,5 +1,7 @@
 import datetime as dt
+import json
 import os
+from json import JSONDecodeError
 
 import rich
 import typer
@@ -12,7 +14,8 @@ from langchain_core.messages import HumanMessage
 from langchain_glean import ChatGlean
 
 from glu import ROOT_DIR
-from glu.models import ChatProvider
+from glu.config import JIRA_ISSUE_TEMPLATES, REPO_CONFIGS
+from glu.models import ChatProvider, TicketGeneration
 from glu.utils import print_error
 
 
@@ -34,8 +37,14 @@ def generate_description(
         template = None
 
     if not template:
-        with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
-            template = f.read()
+        if (
+            REPO_CONFIGS.get(repo.full_name)
+            and REPO_CONFIGS[repo.full_name].pr_template
+        ):
+            template = REPO_CONFIGS[repo.full_name].pr_template
+        else:
+            with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
+                template = f.read()
 
     # informs whether to provide the diff or a URL (since indexing should be done)
     is_newly_created_pr = dt.datetime.now(
@@ -80,7 +89,105 @@ def generate_description(
     return response.content  # type: ignore
 
 
-def prompt_for_chat_provider(provider: str | None = None) -> ChatProvider | None:
+def generate_ticket(
+    ai_prompt: str,
+    issuetype: str,
+    repo_name: str | None,
+    chat_provider: ChatProvider | None,
+    requested_changes: str | None = None,
+    previous_attempt: TicketGeneration | None = None,
+    previous_error: str | None = None,
+    retry: int = 0,
+) -> TicketGeneration:
+    if retry > 2:
+        print_error(f"Failed to generate ticket after {retry} attempts")
+        raise typer.Exit(1)
+
+    chat = _get_chat_model(chat_provider)
+    if not chat:
+        raise typer.Exit(1)
+
+    default_template = """
+    Description:
+    {description}
+    """
+    template = JIRA_ISSUE_TEMPLATES.get(issuetype.lower(), default_template)
+
+    repo_context = ""
+    if repo_name and isinstance(chat, ChatGlean):
+        repo_context = (
+            f"Tailor your response to the context of the {repo_name} Github repository."
+        )
+
+    response_format = {
+        "description": "{ticket description}",
+        "summary": "{ticket summary, 15 words or less}",
+    }
+    error = f"Error on previous attempt: {previous_error}" if previous_error else ""
+    changes = (
+        f"Requested changes from previous generation: {requested_changes}\n\n{previous_attempt.json()}"
+        if requested_changes and previous_attempt
+        else ""
+    )
+
+    prompt = HumanMessage(
+        content=f"""
+        {error}
+        {changes}
+        
+        Provide a description and summary for a Jira {issuetype} ticket 
+        given the user prompt: {ai_prompt}. 
+
+        The summary should be as specific as possible to the goal of the ticket.
+
+        Be concise and in your descriptions, with the goal of providing a clear
+        scope of the work to be completed in this ticket.
+        
+        The format of your description is as follows, where the content in brackets
+        needs to be replaced by content:
+        {template or ""}
+        
+        {repo_context}
+        
+        Your response should be in format of {json.dumps(response_format)}
+        """
+    )
+
+    response = chat.invoke([prompt])
+
+    try:
+        parsed = json.loads(response.content)  # type: ignore
+        if not parsed.get("description") or not parsed.get("summary"):
+            error = f"Your response was in invalid format ({parsed}). Make sure it is in format of: {json.dumps(response_format)}"
+            return generate_ticket(
+                ai_prompt,
+                issuetype,
+                repo_name,
+                chat_provider,
+                requested_changes,
+                previous_attempt,
+                error,
+                retry + 1,
+            )
+    except JSONDecodeError:
+        error = f"Your response was not in valid JSON format. Make sure it is in format of: {json.dumps(response_format)}"
+        return generate_ticket(
+            ai_prompt,
+            issuetype,
+            repo_name,
+            chat_provider,
+            requested_changes,
+            previous_attempt,
+            error,
+            retry + 1,
+        )
+
+    return TicketGeneration.model_validate(parsed)
+
+
+def prompt_for_chat_provider(
+    provider: str | None = None, raise_if_no_api_key: bool = False
+) -> ChatProvider | None:
     providers: list[ChatProvider] = []
     if os.getenv("GLEAN_API_TOKEN"):
         providers.append("Glean")
@@ -93,7 +200,11 @@ def prompt_for_chat_provider(provider: str | None = None) -> ChatProvider | None
         raise typer.Exit(1)
 
     if not providers:
-        rich.print("[warning]No API key found. Skipping PR description generation.[/]")
+        if raise_if_no_api_key:
+            print_error("No API key found for AI generation")
+            raise typer.Exit(1)
+
+        rich.print("[warning]No API key found for AI generation.[/]")
         return None
 
     if len(providers) == 1:

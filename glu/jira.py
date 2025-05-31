@@ -28,9 +28,11 @@ def get_user_from_jira(jira: JIRA, user_query: str | None) -> dict[str, str]:
     return {"id": choice}
 
 
-def get_jira_project(jira: JIRA, repo_name: str, project: str | None = None) -> str:
-    if default_project := REPO_CONFIGS.get(repo_name):
-        return default_project.JIRA_KEY
+def get_jira_project(
+    jira: JIRA, repo_name: str | None, project: str | None = None
+) -> str:
+    if REPO_CONFIGS.get(repo_name or "") and REPO_CONFIGS[repo_name or ""].jira_key:
+        return REPO_CONFIGS[repo_name or ""].jira_key  # type: ignore
 
     projects = jira.projects()
     project_keys = [project.key for project in projects]

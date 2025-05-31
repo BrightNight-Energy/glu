@@ -1,3 +1,4 @@
+import typer
 from prompt_toolkit.validation import Validator
 from typer import Context
 import rich
@@ -110,3 +111,20 @@ def filterable_menu(
         validate_while_typing=False,
         bottom_toolbar=toolbar,
     )
+
+
+def prompt_or_edit(prompt: str, allow_skip: bool = False) -> str:
+    output = typer.prompt(
+        f"{prompt} [(e) to launch editor{', enter to skip' if allow_skip else ''}]",
+        default="" if allow_skip else None,
+        show_default=False,
+    )
+
+    if output.lower() == "e":
+        body = typer.edit("") or ""
+        if body is None:
+            print_error(f"No {prompt.lower()} provided")
+            raise typer.Exit(1)
+        return body
+
+    return output
