@@ -21,7 +21,7 @@ from glu.utils import print_error
 def generate_description(
     repo: Repository,
     local_repo: Repo,
-    body: str,
+    body: str | None,
     chat_provider: ChatProvider | None,
     jira_project: str | None,
 ) -> str | None:
@@ -61,7 +61,7 @@ def generate_description(
         {template}
 
         PR body:
-        {body}
+        {body or "[None provided]"}
 
         {diff}
         """

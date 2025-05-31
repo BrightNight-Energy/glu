@@ -161,7 +161,7 @@ def create(  # noqa: C901
         )
         if ticket_choice.lower() == "g":
             jira_project = jira_project or get_jira_project(jira, repo_name, project)
-            rich.print("[grey70]Generating ticket...[/]")
+            rich.print("[grey70]Generating ticket...[/]\n")
 
             issuetypes = get_jira_issuetypes(jira, jira_project)
             ticket_data = generate_ticket_with_ai(
@@ -217,6 +217,7 @@ def create(  # noqa: C901
 
     if JIRA_IN_PROGRESS_TRANSITION in transitions:
         jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
+        transitions.append(JIRA_READY_FOR_REVIEW_TRANSITION)
 
     if not draft and ready_for_review and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
         jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
