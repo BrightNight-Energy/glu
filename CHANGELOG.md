@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.3.1 (2025-05-31)
+
+### Bug Fixes
+
+- Add version command to `glu` ([#16](https://github.com/BrightNight-Energy/glu/pull/16),
+  [`69e1334`](https://github.com/BrightNight-Energy/glu/commit/69e1334ca24b4920220481989c87f3c91d1ce49e))
+
+
 ## v1.3.0 (2025-05-31)
 
 ### Features
