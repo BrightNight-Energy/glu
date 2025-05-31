@@ -1,13 +1,12 @@
+import rich
 import typer
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import FuzzyCompleter, WordCompleter
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.validation import Validator
 from typer import Context
-import rich
-
-from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import WordCompleter, FuzzyCompleter
-from prompt_toolkit.shortcuts import CompleteStyle
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.formatted_text import HTML
 
 
 def get_kwargs(ctx: Context) -> dict[str, str | bool]:
@@ -101,7 +100,8 @@ def filterable_menu(
     session: PromptSession = PromptSession()
     return session.prompt(
         HTML(
-            f"{prompt_text} <ansibrightblack>[use ↑/↓ arrows or type to select, press enter to end]</ansibrightblack> "
+            f"{prompt_text} <ansibrightblack>[use ↑/↓ arrows or type to select, press "
+            f"enter to end]</ansibrightblack> "
         ),
         completer=completer,
         complete_while_typing=True,

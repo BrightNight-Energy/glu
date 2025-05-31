@@ -4,7 +4,7 @@ from InquirerPy.base import Choice
 from jira import JIRA
 
 from glu.config import REPO_CONFIGS
-from glu.utils import print_error, filterable_menu
+from glu.utils import filterable_menu, print_error
 
 
 def get_user_from_jira(jira: JIRA, user_query: str | None) -> dict[str, str]:
@@ -28,9 +28,7 @@ def get_user_from_jira(jira: JIRA, user_query: str | None) -> dict[str, str]:
     return {"id": choice}
 
 
-def get_jira_project(
-    jira: JIRA, repo_name: str | None, project: str | None = None
-) -> str:
+def get_jira_project(jira: JIRA, repo_name: str | None, project: str | None = None) -> str:
     if REPO_CONFIGS.get(repo_name or "") and REPO_CONFIGS[repo_name or ""].jira_key:
         return REPO_CONFIGS[repo_name or ""].jira_key  # type: ignore
 
@@ -46,10 +44,10 @@ def get_jira_project(
 def format_jira_ticket(jira_key: str, ticket: str | int) -> str:
     try:
         ticket_num = int(ticket)
-    except ValueError:
+    except ValueError as err:
         print_error(
             "Jira ticket must be an integer. Provide the Jira project key via the config.toml file"
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from err
 
     return f"{jira_key}-{ticket_num}"

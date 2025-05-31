@@ -5,10 +5,10 @@ from json import JSONDecodeError
 
 import rich
 import typer
-from InquirerPy import inquirer
 from github import Github
 from github.PullRequest import PullRequest
 from github.Repository import Repository
+from InquirerPy import inquirer
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_glean import ChatGlean
@@ -37,24 +37,19 @@ def generate_description(
         template = None
 
     if not template:
-        if (
-            REPO_CONFIGS.get(repo.full_name)
-            and REPO_CONFIGS[repo.full_name].pr_template
-        ):
+        if REPO_CONFIGS.get(repo.full_name) and REPO_CONFIGS[repo.full_name].pr_template:
             template = REPO_CONFIGS[repo.full_name].pr_template
         else:
             with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
                 template = f.read()
 
     # informs whether to provide the diff or a URL (since indexing should be done)
-    is_newly_created_pr = dt.datetime.now(
-        dt.timezone.utc
-    ) - pr.created_at < dt.timedelta(minutes=15)
+    is_newly_created_pr = dt.datetime.now(dt.timezone.utc) - pr.created_at < dt.timedelta(
+        minutes=15
+    )
     using_glean = isinstance(chat, ChatGlean)
 
-    pr_location = (
-        "diff below" if is_newly_created_pr or not using_glean else pr.html_url
-    )
+    pr_location = "diff below" if is_newly_created_pr or not using_glean else pr.html_url
 
     pr_diff_str = ""
     if is_newly_created_pr:
@@ -71,8 +66,8 @@ def generate_description(
 
     prompt = HumanMessage(
         content=f"""
-        Provide a description for the PR {pr_location}. 
-        
+        Provide a description for the PR {pr_location}.
+
         Be concise and informative about the contents of the PR, relevant to someone
         reviewing the PR. Write the description the following format:
         {template}
@@ -115,9 +110,7 @@ def generate_ticket(
 
     repo_context = ""
     if repo_name and isinstance(chat, ChatGlean):
-        repo_context = (
-            f"Tailor your response to the context of the {repo_name} Github repository."
-        )
+        repo_context = f"Tailor your response to the context of the {repo_name} Github repository."
 
     response_format = {
         "description": "{ticket description}",
@@ -125,7 +118,9 @@ def generate_ticket(
     }
     error = f"Error on previous attempt: {previous_error}" if previous_error else ""
     changes = (
-        f"Requested changes from previous generation: {requested_changes}\n\n{previous_attempt.json()}"
+        f"Requested changes from previous generation: {requested_changes}\n\n{
+            previous_attempt.model_dump_json()
+        }"
         if requested_changes and previous_attempt
         else ""
     )
@@ -134,21 +129,21 @@ def generate_ticket(
         content=f"""
         {error}
         {changes}
-        
-        Provide a description and summary for a Jira {issuetype} ticket 
-        given the user prompt: {ai_prompt}. 
+
+        Provide a description and summary for a Jira {issuetype} ticket
+        given the user prompt: {ai_prompt}.
 
         The summary should be as specific as possible to the goal of the ticket.
 
         Be concise and in your descriptions, with the goal of providing a clear
         scope of the work to be completed in this ticket.
-        
+
         The format of your description is as follows, where the content in brackets
         needs to be replaced by content:
         {template or ""}
-        
+
         {repo_context}
-        
+
         Your response should be in format of {json.dumps(response_format)}
         """
     )
@@ -158,7 +153,10 @@ def generate_ticket(
     try:
         parsed = json.loads(response.content)  # type: ignore
         if not parsed.get("description") or not parsed.get("summary"):
-            error = f"Your response was in invalid format ({parsed}). Make sure it is in format of: {json.dumps(response_format)}"
+            error = (
+                f"Your response was in invalid format ({parsed}). Make sure it is in format of: "
+                f"{json.dumps(response_format)}"
+            )
             return generate_ticket(
                 ai_prompt,
                 issuetype,
@@ -170,7 +168,10 @@ def generate_ticket(
                 retry + 1,
             )
     except JSONDecodeError:
-        error = f"Your response was not in valid JSON format. Make sure it is in format of: {json.dumps(response_format)}"
+        error = (
+            f"Your response was not in valid JSON format. Make sure it is in format of: "
+            f"{json.dumps(response_format)}"
+        )
         return generate_ticket(
             ai_prompt,
             issuetype,

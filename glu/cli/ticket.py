@@ -2,17 +2,17 @@ from typing import Annotated, Any
 
 import rich
 import typer
-from InquirerPy import inquirer
 from git import InvalidGitRepositoryError
+from InquirerPy import inquirer
 from jira import JIRA
 from typer import Context
 
-from glu.ai import prompt_for_chat_provider, generate_ticket
-from glu.config import JIRA_SERVER, EMAIL, JIRA_API_TOKEN, DEFAULT_JIRA_PROJECT
+from glu.ai import generate_ticket, prompt_for_chat_provider
+from glu.config import DEFAULT_JIRA_PROJECT, EMAIL, JIRA_API_TOKEN, JIRA_SERVER
 from glu.git import get_repo_name
-from glu.models import TicketGeneration, ChatProvider
+from glu.jira import get_jira_project, get_user_from_jira
+from glu.models import ChatProvider, TicketGeneration
 from glu.utils import get_kwargs, print_error, prompt_or_edit
-from glu.jira import get_user_from_jira, get_jira_project
 
 app = typer.Typer()
 
@@ -37,23 +37,13 @@ def create(
         str | None,
         typer.Option("--body", "-b", help="Issue description"),
     ] = None,
-    assignee: Annotated[
-        str | None, typer.Option("--assignee", "-a", help="Assignee")
-    ] = None,
-    reporter: Annotated[
-        str | None, typer.Option("--reporter", "-r", help="Reporter")
-    ] = None,
-    priority: Annotated[
-        str | None, typer.Option("--priority", "-y", help="Priority")
-    ] = None,
-    project: Annotated[
-        str | None, typer.Option("--project", "-p", help="Jira project")
-    ] = None,
+    assignee: Annotated[str | None, typer.Option("--assignee", "-a", help="Assignee")] = None,
+    reporter: Annotated[str | None, typer.Option("--reporter", "-r", help="Reporter")] = None,
+    priority: Annotated[str | None, typer.Option("--priority", "-y", help="Priority")] = None,
+    project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
     ai_prompt: Annotated[
         str | None,
-        typer.Option(
-            "--ai-prompt", "-ai", help="AI prompt to generate summary and description"
-        ),
+        typer.Option("--ai-prompt", "-ai", help="AI prompt to generate summary and description"),
     ] = None,
     provider: Annotated[
         str | None,
@@ -77,9 +67,7 @@ def create(
     if not project:
         project = get_jira_project(jira, repo_name)
 
-    types = [
-        issuetype.name for issuetype in jira.issue_types_for_project(project or "")
-    ]
+    types = [issuetype.name for issuetype in jira.issue_types_for_project(project or "")]
     if not type:
         issuetype = inquirer.select("Select type:", types).execute()
     else:
@@ -89,7 +77,6 @@ def create(
             issuetype = type
 
     if ai_prompt:
-        print("ai_prompt", isinstance(ai_prompt, bool))
         # typer does not currently support union types
         # once they do, the below will work
         # keep an eye on: https://github.com/fastapi/typer/pull/1148
@@ -121,7 +108,7 @@ def create(
 
     fields = extra_fields | {
         "project": project,
-        "issuetype": type,
+        "issuetype": issuetype,
         "description": body,
         "summary": summary,
         "reporter": reporter_id,

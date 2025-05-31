@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import typer
-from git import Repo, GitCommandError
+from git import GitCommandError, Repo
 
 from glu.utils import print_error
 

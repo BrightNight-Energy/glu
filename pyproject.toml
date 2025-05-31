@@ -38,3 +38,18 @@ build-backend = "hatchling.build"
 version_toml = ["pyproject.toml:project.version"]
 version_variables = ["glu/__init__.py:__version__"]
 commit_message = "chore(release): v{version} [skip ci]"
+
+[tool.ruff]
+line-length = 100  # due to comments, this may be longer
+lint.select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "ARG001",  # unused-function-argument
+    "ARG002",  # unused-method-argument
+    "F841",    # unused-variable (catches args too)
+    "T201",    # flake8-print
+]
