@@ -6,7 +6,7 @@ import typer
 from git import Commit, GitCommandError, InvalidGitRepositoryError
 from github import Auth, Github, GithubException
 from InquirerPy import inquirer
-from jira import JIRA
+from jira import JIRA, JIRAError
 
 from glu.ai import (
     generate_description,
@@ -56,9 +56,6 @@ def create(  # noqa: C901
         typer.Option("--project", "-p", help="Jira project (defaults to default Jira project)"),
     ] = None,
     draft: Annotated[bool, typer.Option("--draft", "-d", help="Mark as draft PR")] = False,
-    ready_for_review: Annotated[
-        bool, typer.Option(help="Transition ticket to Ready for review")
-    ] = True,
     reviewers: Annotated[
         list[str] | None,
         typer.Option(
@@ -184,6 +181,7 @@ def create(  # noqa: C901
             ticket = jira_issue.key.split("-")[1]
         elif ticket_choice.isdigit():
             ticket = ticket_choice
+            jira_project = jira_project or get_jira_project(jira, repo_name, project)
         else:
             return
 
@@ -215,15 +213,19 @@ def create(  # noqa: C901
 
     ticket_id = format_jira_ticket(jira_project, ticket or "")
 
-    transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
-
-    if JIRA_IN_PROGRESS_TRANSITION in transitions:
-        jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
+    try:
         transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
 
-    if not draft and ready_for_review and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
-        jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
-        rich.print(f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]")
+        if JIRA_IN_PROGRESS_TRANSITION in transitions:
+            jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
+            transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
+
+        if not draft and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
+            jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
+            rich.print(f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]")
+    except JIRAError as err:
+        rich.print(err)
+        raise typer.Exit(1) from err
 
 
 def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | None:
