@@ -21,7 +21,7 @@ jobs:
         id: load-secrets
         uses: 1password/load-secrets-action@v2
         env:
-          PYPI_TOKEN: op://SW Engineering Admin/Pypi token/credential
+          UV_PUBLISH_TOKEN: op://SW Engineering Admin/Pypi token/credential
       - uses: ./.github/actions/cached-venv
       - name: Test service
         run: |
@@ -33,7 +33,7 @@ jobs:
           git pull
           git reset --hard HEAD
           uv build
-          uv publish --token ${{ steps.load-secrets.outputs.PYPI_TOKEN }}
+          uv publish
 
   releases:
     name: Release all Github packages
