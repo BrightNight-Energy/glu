@@ -219,7 +219,7 @@ def create(  # noqa: C901
 
     if JIRA_IN_PROGRESS_TRANSITION in transitions:
         jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
-        transitions.append(JIRA_READY_FOR_REVIEW_TRANSITION)
+        transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
 
     if not draft and ready_for_review and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
         jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)

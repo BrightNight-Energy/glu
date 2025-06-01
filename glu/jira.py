@@ -81,8 +81,8 @@ def generate_ticket_with_ai(
     summary = ticket_data.summary
     body = ticket_data.description
 
-    rich.print(f"[grey70]Proposed summary:[/]\n{summary}\n")
-    rich.print(f"[grey70]Proposed description:[/]\n{body}")
+    rich.print(f"[grey70]Proposed ticket title:[/]\n{summary}\n")
+    rich.print(f"[grey70]Proposed ticket body:[/]\n{body}")
 
     choices = [
         "Accept",
