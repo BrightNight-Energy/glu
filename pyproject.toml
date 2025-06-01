@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "gitpython>=3.1.44",
+    "glean-api-client>=0.5.1",
     "inquirerpy>=0.3.4",
     "jira>=3.8.0",
     "langchain-glean>=0.3.1",

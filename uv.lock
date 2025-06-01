@@ -235,11 +235,12 @@ wheels = [
 ]
 
 [[package]]
-name = "glu"
-version = "1.3.1"
+name = "glu-cli"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "gitpython" },
+    { name = "glean-api-client" },
     { name = "inquirerpy" },
     { name = "jira" },
     { name = "langchain-glean" },
@@ -264,6 +265,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "gitpython", specifier = ">=3.1.44" },
+    { name = "glean-api-client", specifier = ">=0.5.1" },
     { name = "inquirerpy", specifier = ">=0.3.4" },
     { name = "jira", specifier = ">=3.8.0" },
     { name = "langchain-glean", specifier = ">=0.3.1" },
