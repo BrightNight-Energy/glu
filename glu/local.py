@@ -131,14 +131,18 @@ def generate_commit_with_ai(
             raise typer.Exit(0)
 
 
-def create_commit(local_repo: Repo, message: str, retry: int = 0) -> Commit:
+def create_commit(local_repo: Repo, message: str, dry_run: bool = False, retry: int = 0) -> Commit:
     try:
         local_repo.git.add(all=True)
-        return local_repo.index.commit(message)
+        commit = local_repo.index.commit(message)
+        if dry_run:
+            local_repo.git.reset("HEAD~1")
+        return commit
     except HookExecutionError as err:
         if retry == 0:
-            rich.print("[warning]Pre-commit hooks failed, retrying...[/]")
-            return create_commit(local_repo, message, retry + 1)
+            if not dry_run:
+                rich.print("[warning]Pre-commit hooks failed, retrying...[/]")
+            return create_commit(local_repo, message, dry_run, retry + 1)
 
         rich.print(err)
         raise typer.Exit(1) from err

@@ -8,7 +8,7 @@ from glu.models import ChatProvider
 
 
 class RepoConfig(BaseModel):
-    jira_key: str | None = None
+    jira_project_key: str | None = None
     pr_template: str | None = None
 
 
@@ -50,7 +50,7 @@ class Config(BaseModel):
     env: EnvConfig
     preferences: Preferences = Preferences()
     repos: dict[str, RepoConfig] = Field(default_factory=dict)
-    jira_issue_config: dict[str, JiraIssueTemplateConfig] = Field(default_factory=dict)
+    jira_issue: dict[str, JiraIssueTemplateConfig] = Field(default_factory=dict)
 
     @classmethod
     @field_validator("jira_issue_config")
@@ -58,6 +58,14 @@ class Config(BaseModel):
         cls, v: dict[str, JiraIssueTemplateConfig]
     ) -> dict[str, JiraIssueTemplateConfig]:
         return {k.lower(): data for k, data in v.items()}
+
+    def export(self) -> dict:
+        base = self.model_dump(exclude_none=True)
+        if not self.repos:
+            base.pop("repos")
+        if not self.jira_issue:
+            base.pop("jira_issue")
+        return base
 
 
 def config_path() -> Path:
@@ -90,7 +98,7 @@ ensure_config()
 config = get_config()
 
 REPO_CONFIGS = config.repos
-JIRA_ISSUE_TEMPLATES = config.jira_issue_config
+JIRA_ISSUE_TEMPLATES = config.jira_issue
 
 # jira
 JIRA_SERVER = config.env.jira_server

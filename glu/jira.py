@@ -32,8 +32,8 @@ def get_user_from_jira(jira: JIRA, user_query: str | None) -> IdReference:
 
 
 def get_jira_project(jira: JIRA, repo_name: str | None, project: str | None = None) -> str:
-    if REPO_CONFIGS.get(repo_name or "") and REPO_CONFIGS[repo_name or ""].jira_key:
-        return REPO_CONFIGS[repo_name or ""].jira_key  # type: ignore
+    if REPO_CONFIGS.get(repo_name or "") and REPO_CONFIGS[repo_name or ""].jira_project_key:
+        return REPO_CONFIGS[repo_name or ""].jira_project_key  # type: ignore
 
     projects = jira.projects()
     project_keys = [project.key for project in projects]
@@ -81,8 +81,8 @@ def generate_ticket_with_ai(
     summary = ticket_data.summary
     body = ticket_data.description
 
-    rich.print(f"[grey70]Proposed summary:[/]\n{summary}\n")
-    rich.print(f"[grey70]Proposed description:[/]\n{body}")
+    rich.print(f"[grey70]Proposed ticket title:[/]\n{summary}\n")
+    rich.print(f"[grey70]Proposed ticket body:[/]\n{body}")
 
     choices = [
         "Accept",
