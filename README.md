@@ -28,13 +28,69 @@ After installation, the `glu` command will be available:
 glu --help
 ```
 
-### Global Options
+### Commands
 
-- `--version`                   Show the version and exit  
-- `--install-completion`        Install shell completion for your shell  
-- `--show-completion`           Show completion script to customize installation  
-- `--help`                      Show this message and exit  
-【F:glu/cli/main.py†L33-L43】
+Glu CLI provides two main command groups: `pr` and `ticket`. They are registered as subcommands of the main CLI:
+
+```bash
+glu pr --help
+glu ticket --help
+```
+【F:glu/cli/main.py†L253-L260】
+
+#### `pr create`
+
+The only command you need. When you're ready to push and raise a PR, use this. It will:
+
+1. Create your commit message based on commit diff (if uncommitted changes)
+2. Create a ticket in Jira based on PR description (or use the provided ticket #)
+3. Push a PR based on the git diff and tag your reviewers
+4. If PR is not a draft, will move your ticket to Ready for review!
+
+...all fully customizable and within your control.
+
+<img align="center" alt="glu ticket creation demo" src=".github/assets/ticket-creation-download.gif" /><br/><br/>
+
+```bash
+glu pr create [OPTIONS]
+```
+
+Options:
+
+- `--ticket, -t TEXT`          Jira ticket number  
+- `--project, -p TEXT`         Jira project (defaults to default project)  
+- `--draft, -d`                Mark as draft PR  
+- `--ready-for-review/--no-ready-for-review`  Transition ticket to Ready for review  
+- `--reviewer, -r TEXT`        Requested reviewers (repeatable)  
+- `--provider, -pr TEXT`       AI model provider  
+
+See the implementation for more details:
+【F:glu/cli/pr.py†L50-L78】
+
+#### `ticket create`
+
+Create a Jira ticket, optionally using AI to generate summary and description:
+
+<img align="center" alt="glu ticket creation demo" src=".github/assets/ticket-creation-download.gif" /><br/><br/>
+
+```bash
+glu ticket create [OPTIONS]
+```
+
+Options:
+
+- `--summary, --title, -s TEXT`      Issue summary or title  
+- `--type, -t TEXT`                  Issue type  
+- `--body, -b TEXT`                  Issue description  
+- `--assignee, -a TEXT`              Assignee  
+- `--reporter, -r TEXT`              Reporter  
+- `--priority, -y TEXT`              Priority  
+- `--project, -p TEXT`               Jira project  
+- `--ai-prompt, -ai TEXT`            AI prompt to generate summary and description  
+- `--provider, -pr TEXT`             AI model provider  
+
+The command also accepts additional JIRA fields via `--<field> <value>`:
+【F:glu/cli/ticket.py†L31-L60】
 
 ### Configuration (`init`)
 
@@ -67,59 +123,6 @@ Options:
 
 For full option details, refer to the source definition:
 【F:glu/cli/main.py†L45-L124】
-
-### Commands
-
-Glu CLI provides two main command groups: `pr` and `ticket`. They are registered as subcommands of the main CLI:
-
-```bash
-glu pr --help
-glu ticket --help
-```
-【F:glu/cli/main.py†L253-L260】
-
-#### `pr create`
-
-Create a pull request with AI‑generated or manual descriptions:
-
-```bash
-glu pr create [OPTIONS]
-```
-
-Options:
-
-- `--ticket, -t TEXT`          Jira ticket number  
-- `--project, -p TEXT`         Jira project (defaults to default project)  
-- `--draft, -d`                Mark as draft PR  
-- `--ready-for-review/--no-ready-for-review`  Transition ticket to Ready for review  
-- `--reviewer, -r TEXT`        Requested reviewers (repeatable)  
-- `--provider, -pr TEXT`       AI model provider  
-
-See the implementation for more details:
-【F:glu/cli/pr.py†L50-L78】
-
-#### `ticket create`
-
-Create a Jira ticket, optionally using AI to generate summary and description:
-
-```bash
-glu ticket create [OPTIONS]
-```
-
-Options:
-
-- `--summary, --title, -s TEXT`      Issue summary or title  
-- `--type, -t TEXT`                  Issue type  
-- `--body, -b TEXT`                  Issue description  
-- `--assignee, -a TEXT`              Assignee  
-- `--reporter, -r TEXT`              Reporter  
-- `--priority, -y TEXT`              Priority  
-- `--project, -p TEXT`               Jira project  
-- `--ai-prompt, -ai TEXT`            AI prompt to generate summary and description  
-- `--provider, -pr TEXT`             AI model provider  
-
-The command also accepts additional JIRA fields via `--<field> <value>`:
-【F:glu/cli/ticket.py†L31-L60】
 
 ## Contributing
 
