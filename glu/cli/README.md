@@ -1,7 +1,6 @@
 # Glu CLI
 
-Glu CLI is a command‑line interface for Glu that streamlines common development workflows by integrating 
-GitHub pull requests, Jira tickets, and AI‑powered content generation.
+Glu CLI is a command‑line interface for Glu that streamlines common development workflows by integrating GitHub pull requests, Jira tickets, and AI‑powered content generation.
 
 ## Installation
 
@@ -15,7 +14,7 @@ pip install glu
 Alternatively, to install from source:
 
 ```bash
-git clone https://github.com/BrightNight-Energy/glu.git
+git clone https://github.com/your_org/glu.git
 cd glu
 pip install -e .
 ```
@@ -130,15 +129,13 @@ Contributions to Glu CLI are welcome! Please follow these guidelines:
    git checkout -b feature/your-feature
    ```
 2. Make your changes, ensuring that new code includes tests where appropriate.
-3. Install precommit hooks:
+3. Run linters and formatters:
    ```bash
-    pre-commit install --install-hooks
-    pre-commit install --hook-type commit-msg
+   pre-commit run --all-files
    ```
 4. Commit your changes following Conventional Commits.
 5. Push to your fork and open a Pull Request.
 
 ## Acknowledgements
 
-Glu CLI is inspired by [Jira CLI](https://github.com/ankitpokhrel/jira-cli) and 
-[GitHub CLI](https://github.com/cli/cli).
+Glu CLI draws inspiration from [Jira CLI](https://github.com/Netflix-Skunkworks/jira-cli) and [GitHub CLI](https://github.com/cli/cli).
