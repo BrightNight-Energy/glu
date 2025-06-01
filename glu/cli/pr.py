@@ -185,8 +185,6 @@ def create(  # noqa: C901
         else:
             return
 
-    raise typer.Exit(0)
-
     if pr_description and ticket and jira_project:
         pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
 
@@ -215,6 +213,7 @@ def create(  # noqa: C901
 
     ticket_id = format_jira_ticket(jira_project, ticket or "")
 
+    rich.print(f"ticket id: {ticket_id}")
     try:
         transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
 
