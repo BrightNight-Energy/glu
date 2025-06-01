@@ -8,9 +8,8 @@ GitHub pull requests, Jira tickets, and AI‑powered content generation.
 Glu CLI is distributed via PyPI. You can install it with:
 
 ```bash
-pip install glu
+pipx install glu-cli
 ```
-【F:pyproject.toml†L1-L7】
 
 Alternatively, to install from source:
 
@@ -36,7 +35,6 @@ Glu CLI provides two main command groups: `pr` and `ticket`. They are registered
 glu pr --help
 glu ticket --help
 ```
-【F:glu/cli/main.py†L253-L260】
 
 #### `pr create`
 
@@ -64,8 +62,6 @@ Options:
 - `--reviewer, -r TEXT`        Requested reviewers (repeatable)  
 - `--provider, -pr TEXT`       AI model provider  
 
-See the implementation for more details:
-【F:glu/cli/pr.py†L50-L78】
 
 #### `ticket create`
 
@@ -89,8 +85,7 @@ Options:
 - `--ai-prompt, -ai TEXT`            AI prompt to generate summary and description  
 - `--provider, -pr TEXT`             AI model provider  
 
-The command also accepts additional JIRA fields via `--<field> <value>`:
-【F:glu/cli/ticket.py†L31-L60】
+The command also accepts additional JIRA fields via `--<field> <value>`.
 
 ### Configuration (`init`)
 
@@ -119,10 +114,7 @@ Options:
 
 - **Glean Config**  
   - `--glean-api-token TEXT`        Glean API token  
-  - `--glean-instance TEXT`         Glean instance URL  
-
-For full option details, refer to the source definition:
-【F:glu/cli/main.py†L45-L124】
+  - `--glean-instance TEXT`         Glean instance URL
 
 ## Contributing
 

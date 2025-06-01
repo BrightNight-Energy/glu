@@ -14,26 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: 1password/load-secrets-action/configure@v2
-        with:
-          service-account-token: ${{ secrets.SW_ADMIN_1PASSWORD_SERVICE_ACCOUNT_TOKEN }}
-      - name: Load secrets from 1password
-        id: load-secrets
-        uses: 1password/load-secrets-action@v2
-        env:
-          UV_PUBLISH_TOKEN: op://SW Engineering Admin/Pypi token/credential
       - uses: ./.github/actions/cached-venv
       - name: Test service
         run: |
           source .venv/bin/activate
           ruff check
           mypy glu --ignore-missing-imports
-      - name: Build and publish
-        run: |
-          git pull
-          git reset --hard HEAD
-          uv build
-          uv publish
 
   releases:
     name: Release all Github packages
@@ -45,6 +31,14 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history so semantic-release can resolve commits
           token: ${{ secrets.CICD_RELEASE_GITHUB_TOKEN }}
+      - uses: 1password/load-secrets-action/configure@v2
+        with:
+          service-account-token: ${{ secrets.SW_ADMIN_1PASSWORD_SERVICE_ACCOUNT_TOKEN }}
+      - name: Load secrets from 1password
+        id: load-secrets
+        uses: 1password/load-secrets-action@v2
+        env:
+          UV_PUBLISH_TOKEN: op://SW Engineering Admin/Pypi token/credential
       - uses: ./.github/actions/cached-venv
       - name: Create github release
         id: release
@@ -66,3 +60,10 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.release.outputs.tag }}
+      - name: Build and publish
+        if: steps.release.outputs.released == 'true'
+        run: |
+          git pull
+          git reset --hard HEAD
+          uv build
+          uv publish
