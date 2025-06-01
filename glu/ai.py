@@ -219,6 +219,7 @@ def prompt_for_chat_provider(
 def generate_commit_message(
     chat_provider: ChatProvider | None,
     diff: str,
+    branch_name: str,
     error: str | None = None,
     retry: int = 0,
 ) -> CommitGeneration:
@@ -242,6 +243,9 @@ def generate_commit_message(
 
         Provide a commit message for the following diff:
         {diff}
+
+        The branch name sometimes gives a hint to the primary objective of the work,
+        use it to inform the commit title.
 
         Be concise in the body, using bullets to give a high level summary. Limit
         to 5 bullets. Focus on the code. Don't mention version bumps of the package itself.
@@ -269,7 +273,7 @@ def generate_commit_message(
                 f"{json.dumps(response_format)}. Error: {err}"
             )
 
-        return generate_commit_message(chat_provider, diff, error, retry + 1)
+        return generate_commit_message(chat_provider, diff, branch_name, error, retry + 1)
 
 
 def _generate_issuetype(

@@ -14,12 +14,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: 1password/load-secrets-action/configure@v2
+        with:
+          service-account-token: ${{ secrets.PA_1PASSWORD_SERVICE_ACCOUNT_TOKEN }}
+      - name: Load secrets from 1password
+        id: load-secrets
+        uses: 1password/load-secrets-action@v2
+        env:
+          PYPI_TOKEN: op://SW Engineering Admin/Pypi token/credential
       - uses: ./.github/actions/cached-venv
       - name: Test service
         run: |
           source .venv/bin/activate
           ruff check
           mypy glu --ignore-missing-imports
+      - name: Build and publish
+        run: |
+          git pull
+          git reset --hard HEAD
+          uv build
+          uv publish --token ${{ steps.load-secrets.outputs.PYPI_TOKEN }}
 
   releases:
     name: Release all Github packages
