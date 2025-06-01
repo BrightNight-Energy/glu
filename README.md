@@ -49,7 +49,7 @@ The only command you need. When you're ready to push and raise a PR, use this. I
 
 ...all fully customizable and within your control.
 
-<img align="center" alt="glu ticket creation demo" src=".github/assets/ticket-creation-download.gif" /><br/><br/>
+<img align="center" alt="glu ticket creation demo" src=".github/assets/pr-creation-demo.gif" /><br/><br/>
 
 ```bash
 glu pr create [OPTIONS]
@@ -71,7 +71,7 @@ See the implementation for more details:
 
 Create a Jira ticket, optionally using AI to generate summary and description:
 
-<img align="center" alt="glu ticket creation demo" src=".github/assets/ticket-creation-download.gif" /><br/><br/>
+<img align="center" alt="glu ticket creation demo" src=".github/assets/ticket-creation-demo.gif" /><br/><br/>
 
 ```bash
 glu ticket create [OPTIONS]
