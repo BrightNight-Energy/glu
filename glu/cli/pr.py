@@ -6,7 +6,7 @@ import typer
 from git import Commit, GitCommandError, InvalidGitRepositoryError
 from github import Auth, Github, GithubException
 from InquirerPy import inquirer
-from jira import JIRA
+from jira import JIRA, JIRAError
 
 from glu.ai import (
     generate_description,
@@ -181,8 +181,11 @@ def create(  # noqa: C901
             ticket = jira_issue.key.split("-")[1]
         elif ticket_choice.isdigit():
             ticket = ticket_choice
+            rich.print(f"ticket: {ticket_choice}")
         else:
             return
+
+    raise typer.Exit(0)
 
     if pr_description and ticket and jira_project:
         pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
@@ -212,15 +215,19 @@ def create(  # noqa: C901
 
     ticket_id = format_jira_ticket(jira_project, ticket or "")
 
-    transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
-
-    if JIRA_IN_PROGRESS_TRANSITION in transitions:
-        jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
+    try:
         transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
 
-    if not draft and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
-        jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
-        rich.print(f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]")
+        if JIRA_IN_PROGRESS_TRANSITION in transitions:
+            jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
+            transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
+
+        if not draft and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
+            jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
+            rich.print(f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]")
+    except JIRAError as err:
+        rich.print(err)
+        raise typer.Exit(1) from err
 
 
 def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | None:
