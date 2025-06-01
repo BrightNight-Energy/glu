@@ -1,5 +1,8 @@
 # Glu CLI
 
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/glu-cli)
+![GitHub CI](https://github.com/BrightNight-Energy/glu/actions/workflows/cicd.yml/badge.svg)
+
 Glu CLI is a command‑line interface for Glu that streamlines common development workflows by integrating 
 GitHub pull requests, Jira tickets, and AI‑powered content generation.
 
