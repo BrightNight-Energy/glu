@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.5.0 (2025-06-01)
+
+### Features
+
+- Interactive config init, dry-run commits & config refactor
+  ([#21](https://github.com/BrightNight-Energy/glu/pull/21),
+  [`e504947`](https://github.com/BrightNight-Energy/glu/commit/e5049475d07e32879801e26d6b3f6214cca70cfb))
+
+
 ## v1.4.0 (2025-05-31)
 
 ### Features
