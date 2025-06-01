@@ -33,7 +33,7 @@ class CommitGeneration(BaseModel):
     @model_validator(mode="after")
     def validate_title(self) -> "CommitGeneration":
         if self.type in self.title:
-            self.title = self.title.replace(f"{self.type}:", "").strip()
+            self.title = self.title.split(":")[1].strip()
 
         self.title = self.title.capitalize()
         return self

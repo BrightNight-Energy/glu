@@ -99,11 +99,13 @@ def create(  # noqa: C901
         match commit_choice:
             case "Commit and push with AI message":
                 rich.print("[grey70]Generating commit...[/]\n")
+                create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
                 commit_data = generate_commit_with_ai(chat_provider, local_repo)
 
                 latest_commit = create_commit(local_repo, commit_data.message)
                 push(local_repo)
             case "Commit and push with manual message":
+                create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
                 commit_message = typer.edit("")
                 if not commit_message:
                     print_error("No commit message provided")

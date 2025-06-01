@@ -244,7 +244,7 @@ def generate_commit_message(
         {diff}
 
         Be concise in the body, using bullets to give a high level summary. Limit
-        to 5 bullets.
+        to 5 bullets. Focus on the code. Don't mention version bumps of the package itself.
 
         Your response should be in format of {json.dumps(response_format)}
         """
