@@ -1,11 +1,12 @@
 [project]
-name = "glu"
+name = "glu-cli"
 version = "1.5.0"
 description = "A CLI tool to facilitate the developer workflow"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "gitpython>=3.1.44",
+    "glean-api-client>=0.5.1",
     "inquirerpy>=0.3.4",
     "jira>=3.8.0",
     "langchain-glean>=0.3.1",
@@ -33,6 +34,9 @@ glu = "glu.cli.main:app"
 [build-system]
 requires = ["hatchling>=1.0"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["glu"]
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
