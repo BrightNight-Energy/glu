@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.6.0 (2025-06-01)
+
+### Features
+
+- Add README and build publish step to ci ([#25](https://github.com/BrightNight-Energy/glu/pull/25),
+  [`986ff3b`](https://github.com/BrightNight-Energy/glu/commit/986ff3b5567990bb10c0e065c55a5d752e4bb82c))
+
+
 ## v1.5.0 (2025-06-01)
 
 ### Features
