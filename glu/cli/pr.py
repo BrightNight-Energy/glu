@@ -73,6 +73,14 @@ def create(  # noqa: C901
             help="AI model provider",
         ),
     ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="AI model",
+        ),
+    ] = None,
 ):
     try:
         local_repo = get_repo()
@@ -97,7 +105,7 @@ def create(  # noqa: C901
             case "Commit and push with AI message":
                 rich.print("[grey70]Generating commit...[/]\n")
                 create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
-                commit_data = generate_commit_with_ai(chat_provider, local_repo)
+                commit_data = generate_commit_with_ai(chat_provider, model, local_repo)
 
                 latest_commit = create_commit(local_repo, commit_data.message)
                 push(local_repo)
@@ -150,7 +158,9 @@ def create(  # noqa: C901
     selected_reviewers = prompt_for_reviewers(gh, reviewers, repo_name, draft)
 
     rich.print("[grey70]Generating description...[/]")
-    pr_description = generate_description(repo, local_repo, body, chat_provider, jira_project)
+    pr_description = generate_description(
+        repo, local_repo, body, chat_provider, model, jira_project
+    )
 
     if not ticket:
         ticket_choice = typer.prompt(
@@ -164,7 +174,11 @@ def create(  # noqa: C901
 
             issuetypes = get_jira_issuetypes(jira, jira_project)
             ticket_data = generate_ticket_with_ai(
-                repo_name, chat_provider, issuetypes=issuetypes, pr_description=pr_description
+                repo_name,
+                chat_provider,
+                model,
+                issuetypes=issuetypes,
+                pr_description=pr_description,
             )
 
             myself_ref = get_user_from_jira(jira, user_query=None)

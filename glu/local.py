@@ -97,10 +97,11 @@ def get_git_diff(repo: Repo | None = None) -> str:
 
 def generate_commit_with_ai(
     chat_provider: ChatProvider | None,
+    model: str | None,
     local_repo: Repo,
 ) -> CommitGeneration:
     diff = get_git_diff(local_repo)
-    commit_data = generate_commit_message(chat_provider, diff, local_repo.active_branch.name)
+    commit_data = generate_commit_message(chat_provider, model, diff, local_repo.active_branch.name)
 
     if PREFERENCES.auto_accept_generated_commits:
         return commit_data

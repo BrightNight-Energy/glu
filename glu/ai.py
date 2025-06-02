@@ -13,9 +13,18 @@ from langchain_glean import ChatGlean
 from pydantic import ValidationError
 
 from glu import ROOT_DIR
-from glu.config import JIRA_ISSUE_TEMPLATES, PREFERENCES, REPO_CONFIGS
+from glu.config import (
+    DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_OLLAMA_MODEL,
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_XAI_MODEL,
+    JIRA_ISSUE_TEMPLATES,
+    PREFERENCES,
+    REPO_CONFIGS,
+)
 from glu.models import ChatProvider, CommitGeneration, TicketGeneration
-from glu.utils import print_error
+from glu.utils import print_error, remove_json_backticks
 
 
 def generate_description(
@@ -23,9 +32,10 @@ def generate_description(
     local_repo: Repo,
     body: str | None,
     chat_provider: ChatProvider | None,
+    model: str | None,
     jira_project: str | None,
 ) -> str | None:
-    chat = _get_chat_model(chat_provider)
+    chat = _get_chat_model(chat_provider, model)
     if not chat:
         return None
 
@@ -75,6 +85,7 @@ def generate_description(
 def generate_ticket(
     repo_name: str | None,
     chat_provider: ChatProvider | None,
+    model: str | None,
     issuetype: str | None = None,
     issuetypes: list[str] | None = None,
     ai_prompt: str | None = None,
@@ -88,7 +99,7 @@ def generate_ticket(
         print_error(f"Failed to generate ticket after {retry} attempts")
         raise typer.Exit(1)
 
-    chat = _get_chat_model(chat_provider)
+    chat = _get_chat_model(chat_provider, model)
     if not chat:
         raise typer.Exit(1)
 
@@ -157,7 +168,8 @@ def generate_ticket(
     response = chat.invoke([prompt])
 
     try:
-        parsed = json.loads(response.content)  # type: ignore
+        rich.print(f"response: {response.content} (#{retry})")
+        parsed = json.loads(remove_json_backticks(response.content))  # type: ignore
         return TicketGeneration.model_validate(parsed | {"issuetype": issuetype})
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
@@ -174,6 +186,7 @@ def generate_ticket(
         return generate_ticket(
             repo_name,
             chat_provider,
+            model,
             issuetype,
             issuetypes,
             ai_prompt,
@@ -185,7 +198,7 @@ def generate_ticket(
         )
 
 
-def prompt_for_chat_provider(
+def prompt_for_chat_provider(  # noqa: C901
     provider: str | None = None, raise_if_no_api_key: bool = False
 ) -> ChatProvider | None:
     providers: list[ChatProvider] = []
@@ -194,6 +207,17 @@ def prompt_for_chat_provider(
 
     if os.getenv("OPENAI_API_KEY"):
         providers.append("OpenAI")
+
+    if os.getenv("GOOGLE_API_KEY"):
+        providers.append("Gemini")
+
+    if os.getenv("ANTHROPIC_API_KEY"):
+        providers.append("Anthropic")
+
+    if os.getenv("XAI_API_KEY"):
+        providers.append("xAI")
+
+    providers.append("Ollama")
 
     if provider and provider not in providers:
         print_error(f'No API key found for "{provider}"')
@@ -218,6 +242,7 @@ def prompt_for_chat_provider(
 
 def generate_commit_message(
     chat_provider: ChatProvider | None,
+    model: str | None,
     diff: str,
     branch_name: str,
     error: str | None = None,
@@ -254,12 +279,12 @@ def generate_commit_message(
         """
     )
 
-    chat = _get_chat_model(chat_provider)
+    chat = _get_chat_model(chat_provider, model)
 
     response = chat.invoke([prompt])  # type: ignore
 
     try:
-        parsed = json.loads(response.content)  # type: ignore
+        parsed = json.loads(remove_json_backticks(response.content))  # type: ignore
         return CommitGeneration.model_validate(parsed)
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
@@ -273,7 +298,7 @@ def generate_commit_message(
                 f"{json.dumps(response_format)}. Error: {err}"
             )
 
-        return generate_commit_message(chat_provider, diff, branch_name, error, retry + 1)
+        return generate_commit_message(chat_provider, model, diff, branch_name, error, retry + 1)
 
 
 def _generate_issuetype(
@@ -311,7 +336,7 @@ def _generate_issuetype(
     return _generate_issuetype(chat, issuetypes, context, error, retry + 1)
 
 
-def _get_chat_model(provider: ChatProvider | None) -> BaseChatModel | None:
+def _get_chat_model(provider: ChatProvider | None, model: str | None) -> BaseChatModel | None:
     match provider:
         case "Glean":
             from langchain_glean.chat_models import ChatGlean
@@ -319,7 +344,34 @@ def _get_chat_model(provider: ChatProvider | None) -> BaseChatModel | None:
             return ChatGlean()
         case "OpenAI":
             from langchain_openai import ChatOpenAI
+            from openai import OpenAI
 
-            return ChatOpenAI(model="o4-mini")
+            client = OpenAI()
+            selected_model = model or DEFAULT_OPENAI_MODEL
+            models = [model.id for model in client.models.list()]
+            if selected_model not in models:
+                print_error(f"Invalid model for OpenAI: {selected_model}")
+                raise typer.Exit()
+            return ChatOpenAI(model=selected_model)
+        case "Gemini":
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            selected_model = model or DEFAULT_GEMINI_MODEL
+            return ChatGoogleGenerativeAI(model=selected_model)
+        case "Anthropic":
+            from langchain_anthropic.chat_models import ChatAnthropic
+
+            selected_model = model or DEFAULT_ANTHROPIC_MODEL
+            return ChatAnthropic(model_name=selected_model, timeout=None, stop=None)
+        case "Ollama":
+            from langchain_ollama.chat_models import ChatOllama
+
+            selected_model = model or DEFAULT_OLLAMA_MODEL
+            return ChatOllama(model=selected_model)
+        case "xAI":
+            from langchain_xai.chat_models import ChatXAI
+
+            selected_model = model or DEFAULT_XAI_MODEL
+            return ChatXAI(model=selected_model)
         case _:
             return None

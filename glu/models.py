@@ -4,9 +4,9 @@ from typing import Literal
 from github.NamedUser import NamedUser
 from pydantic import BaseModel, model_validator
 
-ChatProvider = Literal["OpenAI", "Glean"]
+ChatProvider = Literal["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"]
 
-CHAT_PROVIDERS: list[ChatProvider] = ["OpenAI", "Glean"]
+CHAT_PROVIDERS: list[ChatProvider] = ["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"]
 
 
 @dataclass
