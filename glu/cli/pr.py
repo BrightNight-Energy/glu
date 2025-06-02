@@ -30,6 +30,7 @@ from glu.jira import (
     get_user_from_jira,
 )
 from glu.local import (
+    checkout_to_branch,
     create_commit,
     generate_commit_with_ai,
     get_first_commit_since_checkout,
@@ -91,6 +92,10 @@ def create(  # noqa: C901
 
     chat_provider = prompt_for_chat_provider(provider)
 
+    auth = Auth.Token(GITHUB_PAT)
+    gh = Github(auth=auth)
+    repo = gh.get_repo(repo_name)
+
     latest_commit: Commit | None = None
     if local_repo.is_dirty():
         commit_choice = inquirer.select(
@@ -107,6 +112,9 @@ def create(  # noqa: C901
                 create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
                 commit_data = generate_commit_with_ai(chat_provider, model, local_repo)
 
+                checkout_to_branch(
+                    local_repo, repo.default_branch, commit_data.message, chat_provider, model
+                )
                 latest_commit = create_commit(local_repo, commit_data.message)
                 push(local_repo)
             case "Commit and push with manual message":
@@ -116,10 +124,13 @@ def create(  # noqa: C901
                     print_error("No commit message provided")
                     raise typer.Exit(0)
 
+                checkout_to_branch(
+                    local_repo, repo.default_branch, commit_message, chat_provider, model
+                )
                 latest_commit = create_commit(local_repo, commit_message)
                 push(local_repo)
             case "Proceed anyway":
-                pass
+                checkout_to_branch(local_repo, repo.default_branch, commit_message=None)
             case _:
                 print_error("No matching choice for commit was provided")
                 raise typer.Exit(1)
@@ -136,12 +147,7 @@ def create(  # noqa: C901
         if confirm_push:
             push(local_repo)
 
-    auth = Auth.Token(GITHUB_PAT)
-    gh = Github(auth=auth)
-
     jira = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
-
-    repo = gh.get_repo(repo_name)
 
     first_commit = get_first_commit_since_checkout()
     commit = latest_commit or first_commit

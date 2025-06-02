@@ -168,7 +168,6 @@ def generate_ticket(
     response = chat.invoke([prompt])
 
     try:
-        rich.print(f"response: {response.content} (#{retry})")
         parsed = json.loads(remove_json_backticks(response.content))  # type: ignore
         return TicketGeneration.model_validate(parsed | {"issuetype": issuetype})
     except (JSONDecodeError, ValidationError) as err:
@@ -299,6 +298,28 @@ def generate_commit_message(
             )
 
         return generate_commit_message(chat_provider, model, diff, branch_name, error, retry + 1)
+
+
+def generate_branch_name(
+    chat_provider: ChatProvider,
+    model: str | None,
+    commit_message: str,
+) -> str:
+    prompt = HumanMessage(
+        content=f"""
+        Generate a branch name for the following commit:
+        {commit_message}
+
+        The branch name should be separated by '-' and be max 5 words.
+
+        Your response should be simply the branch name, NOTHING else.
+        """
+    )
+
+    chat = _get_chat_model(chat_provider, model)
+
+    response = chat.invoke([prompt])  # type: ignore
+    return response.content  # type: ignore
 
 
 def _generate_issuetype(
