@@ -8,13 +8,22 @@ from InquirerPy import inquirer
 from glu import __version__
 from glu.cli import pr, ticket
 from glu.config import (
+    DEFAULT_MODELS,
+    AnthropicConfig,
     Config,
     EnvConfig,
+    GeminiConfig,
+    GleanConfig,
     JiraIssueTemplateConfig,
+    OllamaConfig,
+    OpenAIConfig,
     Preferences,
+    ProviderConfig,
     RepoConfig,
+    XAIConfig,
     config_path,
 )
+from glu.models import CHAT_PROVIDERS, ChatProvider
 
 app = typer.Typer(rich_markup_mode="rich")
 
@@ -78,39 +87,22 @@ def init(
             rich_help_panel="Github Config",
         ),
     ],
-    openai_api_key: Annotated[
-        str,
-        typer.Option(
-            help="OpenAI API key",
-            hide_input=True,
-            prompt=True,
-            show_default=False,
-            rich_help_panel="OpenAI Config",
-        ),
-    ],
-    openai_org_id: Annotated[
-        str,
-        typer.Option(
-            help="OpenAI organization ID",
-            show_default=False,
-            prompt=True,
-            rich_help_panel="OpenAI Config",
-        ),
-    ],
     jira_server: Annotated[
         str, typer.Option(help="Jira server URL", prompt=True, rich_help_panel="Jira Config")
     ] = DEFAULTS.jira_server,
     jira_in_progress: Annotated[
         str,
         typer.Option(
-            help="Jira 'in progress' transition name", prompt=True, rich_help_panel="Jira Config"
+            help="Jira 'in progress' transition name",
+            prompt="Jira 'in progress' transition name",
+            rich_help_panel="Jira Config",
         ),
     ] = DEFAULTS.jira_in_progress_transition,
     jira_ready_for_review: Annotated[
         str,
         typer.Option(
             help="Jira 'ready for review' transition name",
-            prompt=True,
+            prompt="Jira 'ready for review' transition name",
             rich_help_panel="Jira Config",
         ),
     ] = DEFAULTS.jira_ready_for_review_transition,
@@ -122,19 +114,6 @@ def init(
             rich_help_panel="Jira Config",
         ),
     ] = None,
-    glean_api_token: Annotated[
-        str | None,
-        typer.Option(
-            help="Glean API token",
-            hide_input=True,
-            show_default=False,
-            rich_help_panel="Glean Config",
-        ),
-    ] = None,
-    glean_instance: Annotated[
-        str | None,
-        typer.Option(help="Glean instance URL", show_default=False, rich_help_panel="Glean Config"),
-    ] = None,
 ) -> None:
     """
     Initialize the Glu configuration file interactively.
@@ -145,18 +124,19 @@ def init(
     if cfg_path.exists():
         typer.confirm("Config file already exists. Overwrite?", default=False, abort=True)
 
-    env = EnvConfig(
-        jira_server=jira_server,
-        email=email,
-        jira_api_token=jira_api_token,
-        jira_in_progress_transition=jira_in_progress,
-        jira_ready_for_review_transition=jira_ready_for_review,
-        default_jira_project=default_jira_project or None,
-        github_pat=github_pat,
-        openai_api_key=openai_api_key or None,
-        openai_org_id=openai_org_id or None,
-        glean_api_token=glean_api_token or None,
-        glean_instance=glean_instance or None,
+    provider_configs = _setup_model_providers()
+
+    env = EnvConfig.model_validate(
+        provider_configs
+        | {
+            "jira_server": jira_server,
+            "email": email,
+            "jira_api_token": jira_api_token,
+            "jira_in_progress_transition": jira_in_progress,
+            "jira_ready_for_review_transition": jira_ready_for_review,
+            "default_jira_project": default_jira_project or None,
+            "github_pat": github_pat,
+        }
     )
 
     init_repo_config = typer.confirm(
@@ -175,27 +155,18 @@ def init(
         jira_config = _setup_jira_config()
 
     preferences = Preferences()
-    preferred_provider = inquirer.select(
-        "Preferred LLM provider?", ["None (let me pick every time)", "OpenAI", "Glean"]
-    ).execute()
-    match preferred_provider:
-        case "OpenAI":
-            preferences.preferred_provider = preferred_provider
-            if not env.openai_api_key:
-                env.openai_api_key = typer.prompt("OpenAI API Key", hide_input=True)
-            if not env.openai_org_id:
-                env.openai_org_id = typer.prompt("OpenAI Org ID", default="") or None
-        case "Glean":
-            preferences.preferred_provider = preferred_provider
-            if not env.glean_api_token:
-                env.glean_api_token = (
-                    typer.prompt("Glean API Token (ask your admin for this key)", default="")
-                    or None
-                )
-            if not env.glean_instance:
-                env.glean_instance = typer.prompt("Glean Instance")
-        case _:
+
+    if len(provider_configs) > 1:
+        available_providers = [config.provider for config in provider_configs.values()]
+        preferred_provider = inquirer.select(
+            "Preferred LLM provider?", ["None (let me pick every time)"] + available_providers
+        ).execute()
+        if preferred_provider == "None (let me pick every time)":
             preferences.preferred_provider = None
+        else:
+            preferences.preferred_provider = preferred_provider
+    elif len(provider_configs) == 1:
+        preferences.preferred_provider = list(provider_configs.values())[0].provider
 
     auto_accept_generated_commits = inquirer.select(
         "Auto accept generated commits?", ["No", "Yes"]
@@ -208,6 +179,63 @@ def init(
     cfg_path.write_text(toml.dumps(config.export()), encoding="utf-8")
 
     rich.print(f":white_check_mark: Config file written to {cfg_path}")
+
+
+def _setup_model_providers(  # noqa: C901
+    provider_configs: dict[str, ProviderConfig] | None = None,
+    available_providers: list[ChatProvider] | None = None,
+) -> dict[str, ProviderConfig]:
+    selectable_providers = available_providers or CHAT_PROVIDERS
+    provider = inquirer.select("Select provider", selectable_providers + ["Exit"]).execute()
+
+    current_providers = provider_configs or {}
+    if provider == "Exit":
+        return current_providers
+
+    selectable_providers.remove(provider)
+
+    model = ""  # for typing
+    if default_model := DEFAULT_MODELS.get(provider):
+        model = typer.prompt(f"{provider} model", default=default_model)
+
+    if provider in ["Ollama"]:
+        ollama_config = {"ollama_config": OllamaConfig(model=model)}
+        another_provider = (
+            typer.confirm("Setup another provider?") if selectable_providers else False
+        )
+        if another_provider:
+            return _setup_model_providers(current_providers | ollama_config, selectable_providers)
+
+        return current_providers | ollama_config
+
+    api_key = typer.prompt(f"{provider} API Key", hide_input=True)
+
+    new_config: dict[str, ProviderConfig] = {}
+    match provider:
+        case "Glean":
+            instance = typer.prompt("Glean Instance")
+            new_config = {
+                "glean_config": GleanConfig(model=model, api_key=api_key, instance=instance)
+            }
+        case "OpenAI":
+            org_id = typer.prompt("OpenAI Org ID (optional)", default="", show_default=False)
+            new_config = {
+                "openai_config": OpenAIConfig(model=model, api_key=api_key, org_id=org_id or None)
+            }
+        case "Gemini":
+            new_config = {"gemini_config": GeminiConfig(model=model, api_key=api_key)}
+        case "Anthropic":
+            new_config = {"anthropic_config": AnthropicConfig(model=model, api_key=api_key)}
+        case "xAI":
+            new_config = {"xai_config": XAIConfig(model=model, api_key=api_key)}
+        case _:
+            pass
+
+    another_provider = typer.confirm("Setup another provider?") if selectable_providers else False
+    if another_provider:
+        return _setup_model_providers(current_providers | new_config, selectable_providers)
+
+    return current_providers | new_config
 
 
 def _setup_repos(

@@ -5,7 +5,7 @@ import typer
 from git import Commit, GitCommandError, HookExecutionError, Repo
 from InquirerPy import inquirer
 
-from glu.ai import generate_commit_message
+from glu.ai import generate_branch_name, generate_commit_message
 from glu.config import PREFERENCES
 from glu.models import ChatProvider, CommitGeneration
 from glu.utils import print_error
@@ -97,10 +97,11 @@ def get_git_diff(repo: Repo | None = None) -> str:
 
 def generate_commit_with_ai(
     chat_provider: ChatProvider | None,
+    model: str | None,
     local_repo: Repo,
 ) -> CommitGeneration:
     diff = get_git_diff(local_repo)
-    commit_data = generate_commit_message(chat_provider, diff, local_repo.active_branch.name)
+    commit_data = generate_commit_message(chat_provider, model, diff, local_repo.active_branch.name)
 
     if PREFERENCES.auto_accept_generated_commits:
         return commit_data
@@ -154,3 +155,23 @@ def push(local_repo: Repo) -> None:
     except GitCommandError as err:
         rich.print(err)
         raise typer.Exit(1) from err
+
+
+def checkout_to_branch(
+    local_repo: Repo,
+    main_branch: str,
+    commit_message: str | None,
+    chat_provider: ChatProvider | None = None,
+    model: str | None = None,
+) -> None:
+    if local_repo.active_branch.name != main_branch:
+        return  # already checked out
+
+    if not chat_provider or not commit_message:
+        provided_branch_name: str = typer.prompt("Enter branch name")
+        branch_name = "-".join(provided_branch_name.split())
+    else:
+        rich.print("[grey70]Checking out new branch...[/]")
+        branch_name = generate_branch_name(chat_provider, model, commit_message)
+
+    local_repo.git.checkout("-b", branch_name)
