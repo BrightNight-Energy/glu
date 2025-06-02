@@ -92,11 +92,22 @@ The command also accepts additional JIRA fields via `--<field> <value>`.
 
 ### Configuration (`init`)
 
-Initialize your Glu configuration interactively:
+Initialize your Glu configuration interactively (strongly recommended):
 
 ```bash
 glu init
 ```
+
+Currently, glu supports the AI providers listed below. The default model for each provider can be
+customized via config or specified on each command.
+
+| Provider  | Default model     |
+|:----------|:------------------|
+| OpenAI    | o4-mini           |
+| Gemini    | gemini-2.0-flash  |
+| xAI       | grok-3-mini-fast  |
+| Anthropic | claude-sonnet-4-0 |
+| Ollama    | llama3.2          |
 
 Options:
 
@@ -109,15 +120,7 @@ Options:
   - `--default-jira-project TEXT`   Default Jira project key  
 
 - **GitHub Config**  
-  - `--github-pat TEXT`             GitHub Personal Access Token (required)  
-
-- **OpenAI Config**  
-  - `--openai-api-key TEXT`         OpenAI API key (required)  
-  - `--openai-org-id TEXT`          OpenAI organization ID (required)  
-
-- **Glean Config**  
-  - `--glean-api-token TEXT`        Glean API token  
-  - `--glean-instance TEXT`         Glean instance URL
+  - `--github-pat TEXT`             GitHub Personal Access Token (required)
 
 ## Contributing
 
