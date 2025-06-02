@@ -9,7 +9,6 @@ from github.Repository import Repository
 from InquirerPy import inquirer
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
-from langchain_glean import ChatGlean
 from pydantic import ValidationError
 
 from glu import ROOT_DIR
@@ -124,10 +123,6 @@ def generate_ticket(
     """
     template = JIRA_ISSUE_TEMPLATES.get(issuetype.lower(), default_template)
 
-    repo_context = ""
-    if repo_name and isinstance(chat, ChatGlean):
-        repo_context = f"Tailor your response to the context of the {repo_name} Github repository."
-
     response_format = {
         "description": "{ticket description}",
         "summary": "{ticket summary, 15 words or less}",
@@ -158,8 +153,6 @@ def generate_ticket(
         The format of your description is as follows, where the content in brackets
         needs to be replaced by content:
         {template or ""}
-
-        {repo_context}
 
         Your response should be in the format of {json.dumps(response_format)}
         """
@@ -201,8 +194,8 @@ def prompt_for_chat_provider(  # noqa: C901
     provider: str | None = None, raise_if_no_api_key: bool = False
 ) -> ChatProvider | None:
     providers: list[ChatProvider] = []
-    if os.getenv("GLEAN_API_TOKEN"):
-        providers.append("Glean")
+    # if os.getenv("GLEAN_API_TOKEN"): # currently not supported
+    #     providers.append("Glean")
 
     if os.getenv("OPENAI_API_KEY"):
         providers.append("OpenAI")
