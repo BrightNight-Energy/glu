@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.0.1 (2025-06-02)
+
+### Bug Fixes
+
+- Remove glean chat provider support ([#27](https://github.com/BrightNight-Energy/glu/pull/27),
+  [`256c5bb`](https://github.com/BrightNight-Energy/glu/commit/256c5bb0d5e5415da9e0e674b0af371a3f61e150))
+
+
 ## v2.0.0 (2025-06-02)
 
 ### Features
