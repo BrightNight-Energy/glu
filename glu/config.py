@@ -6,6 +6,14 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from glu.models import ChatProvider
 
+DEFAULT_MODELS: dict[ChatProvider, str] = {
+    "OpenAI": "o4-mini",
+    "Gemini": "gemini-2.0-flash",
+    "Anthropic": "claude-sonnet-4-0",
+    "xAI": "grok-3-mini-fast",
+    "Ollama": "llama3.2",
+}
+
 
 class RepoConfig(BaseModel):
     jira_project_key: str | None = None
@@ -16,6 +24,50 @@ class JiraIssueTemplateConfig(BaseModel):
     issuetemplate: str
 
 
+class ModelConfig(BaseModel):
+    api_key: str
+    model: str
+    provider: ChatProvider
+
+
+class OpenAIConfig(ModelConfig):
+    org_id: str | None = None
+    provider: ChatProvider = Field(default="OpenAI", frozen=True)
+    model: str = DEFAULT_MODELS["OpenAI"]
+
+
+class GleanConfig(ModelConfig):
+    model: str = "_"
+    provider: ChatProvider = Field(default="Glean", frozen=True)
+    instance: str
+
+
+class GeminiConfig(ModelConfig):
+    provider: ChatProvider = Field(default="Gemini", frozen=True)
+    model: str = DEFAULT_MODELS["Gemini"]
+
+
+class AnthropicConfig(ModelConfig):
+    provider: ChatProvider = Field(default="Anthropic", frozen=True)
+    model: str = DEFAULT_MODELS["Anthropic"]
+
+
+class XAIConfig(ModelConfig):
+    provider: ChatProvider = Field(default="xAI", frozen=True)
+    model: str = DEFAULT_MODELS["xAI"]
+
+
+class OllamaConfig(ModelConfig):
+    provider: ChatProvider = Field(default="Ollama", frozen=True)
+    model: str = DEFAULT_MODELS["Ollama"]
+    api_key: str = "_"
+
+
+ProviderConfig = (
+    OpenAIConfig | GleanConfig | GeminiConfig | AnthropicConfig | XAIConfig | OllamaConfig
+)
+
+
 class EnvConfig(BaseModel):
     jira_server: str
     email: str
@@ -24,10 +76,12 @@ class EnvConfig(BaseModel):
     jira_ready_for_review_transition: str
     default_jira_project: str | None = None
     github_pat: str
-    openai_api_key: str | None = None
-    openai_org_id: str | None = None
-    glean_api_token: str | None = None
-    glean_instance: str | None = None
+    openai_config: OpenAIConfig | None = None
+    glean_config: GleanConfig | None = None
+    gemini_config: GeminiConfig | None = None
+    anthropic_config: AnthropicConfig | None = None
+    xai_config: XAIConfig | None = None
+    ollama_config: OllamaConfig | None = None
 
     @classmethod
     def defaults(cls) -> "EnvConfig":
@@ -112,15 +166,47 @@ DEFAULT_JIRA_PROJECT = config.env.default_jira_project
 GITHUB_PAT = config.env.github_pat
 
 # glean
-if glean_api_token := config.env.glean_api_token:
-    os.environ["GLEAN_API_TOKEN"] = glean_api_token
-if glean_instance := config.env.glean_instance:
-    os.environ["GLEAN_INSTANCE"] = glean_instance
+if glean_config := config.env.glean_config:
+    os.environ["GLEAN_API_TOKEN"] = glean_config.api_key
+    os.environ["GLEAN_INSTANCE"] = glean_config.instance
 
 # openai
-if openai_api_key := config.env.openai_api_key:
-    os.environ["OPENAI_API_KEY"] = openai_api_key
-if openai_org_id := config.env.openai_org_id:
-    os.environ["OPENAI_ORG_ID"] = openai_org_id
+if openai_config := config.env.openai_config:
+    os.environ["OPENAI_API_KEY"] = openai_config.api_key
+    if openai_config.org_id:
+        os.environ["OPENAI_ORG_ID"] = openai_config.org_id
+
+DEFAULT_OPENAI_MODEL = (
+    config.env.openai_config.model if config.env.openai_config else DEFAULT_MODELS["OpenAI"]
+)
+
+# gemini
+if gemini_config := config.env.gemini_config:
+    os.environ["GOOGLE_API_KEY"] = gemini_config.api_key
+
+DEFAULT_GEMINI_MODEL = (
+    config.env.gemini_config.model if config.env.gemini_config else DEFAULT_MODELS["Gemini"]
+)
+
+# anthropic
+if anthropic_config := config.env.anthropic_config:
+    os.environ["ANTHROPIC_API_KEY"] = anthropic_config.api_key
+
+DEFAULT_ANTHROPIC_MODEL = (
+    config.env.anthropic_config.model
+    if config.env.anthropic_config
+    else DEFAULT_MODELS["Anthropic"]
+)
+
+# anthropic
+if xai_config := config.env.xai_config:
+    os.environ["XAI_API_KEY"] = xai_config.api_key
+
+DEFAULT_XAI_MODEL = config.env.xai_config.model if config.env.xai_config else DEFAULT_MODELS["xAI"]
+
+# ollama
+DEFAULT_OLLAMA_MODEL = (
+    config.env.ollama_config.model if config.env.ollama_config else DEFAULT_MODELS["Ollama"]
+)
 
 PREFERENCES = config.preferences

@@ -128,3 +128,7 @@ def prompt_or_edit(prompt: str, allow_skip: bool = False) -> str:
         return body
 
     return output
+
+
+def remove_json_backticks(text: str) -> str:
+    return text.replace("```json", "").replace("```", "")

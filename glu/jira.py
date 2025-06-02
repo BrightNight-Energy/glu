@@ -61,6 +61,7 @@ def format_jira_ticket(jira_key: str, ticket: str | int, with_brackets: bool = F
 def generate_ticket_with_ai(
     repo_name: str | None,
     chat_provider: ChatProvider | None,
+    model: str | None,
     issuetype: str | None = None,
     issuetypes: list[str] | None = None,
     ai_prompt: str | None = None,
@@ -71,6 +72,7 @@ def generate_ticket_with_ai(
     ticket_data = generate_ticket(
         repo_name,
         chat_provider,
+        model,
         issuetype,
         issuetypes,
         ai_prompt,
@@ -118,6 +120,7 @@ def generate_ticket_with_ai(
             return generate_ticket_with_ai(
                 repo_name,
                 chat_provider,
+                model,
                 issuetype,
                 issuetypes,
                 ai_prompt,
@@ -133,6 +136,7 @@ def generate_ticket_with_ai(
             return generate_ticket_with_ai(
                 repo_name,
                 chat_provider,
+                model,
                 issuetype,
                 issuetypes,
                 amended_prompt,

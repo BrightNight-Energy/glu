@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v3.0.0 (2025-06-02)
+
+### Features
+
+- Support multiple llm providers and ai-driven branch naming
+  ([#26](https://github.com/BrightNight-Energy/glu/pull/26),
+  [`97cdf27`](https://github.com/BrightNight-Energy/glu/commit/97cdf279e19020fc4866b85fc33ae44452fb4c0d))
+
+
+## v2.0.0 (2025-06-02)
+
+### Features
+
+- Support multiple ai providers and model selection
+  ([`00fe3e9`](https://github.com/BrightNight-Energy/glu/commit/00fe3e94abeb2edb7450b800034dc23efa74ee63))
+
+
 ## v1.6.0 (2025-06-01)
 
 ### Features

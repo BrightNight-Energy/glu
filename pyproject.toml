@@ -1,6 +1,6 @@
 [project]
 name = "glu-cli"
-version = "1.6.0"
+version = "3.0.0"
 description = "A CLI tool to facilitate the developer workflow"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -9,8 +9,12 @@ dependencies = [
     "glean-api-client>=0.5.1",
     "inquirerpy>=0.3.4",
     "jira>=3.8.0",
+    "langchain-anthropic>=0.3.14",
     "langchain-glean>=0.3.1",
+    "langchain-google-genai>=2.1.5",
+    "langchain-ollama>=0.3.3",
     "langchain-openai>=0.3.18",
+    "langchain-xai>=0.2.4",
     "pydantic>=2.11.5",
     "pygithub>=2.6.1",
     "python-dotenv>=1.1.0",
