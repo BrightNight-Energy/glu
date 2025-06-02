@@ -58,6 +58,14 @@ def create(
             help="AI model provider",
         ),
     ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="AI model",
+        ),
+    ] = None,
 ):
     extra_fields: dict[str, Any] = get_kwargs(ctx)
 
@@ -91,7 +99,9 @@ def create(
         # prompt = ai_prompt
 
         provider = prompt_for_chat_provider(provider, True)
-        ticket_data = generate_ticket_with_ai(repo_name, provider, issuetype, ai_prompt=ai_prompt)
+        ticket_data = generate_ticket_with_ai(
+            repo_name, provider, model, issuetype, ai_prompt=ai_prompt
+        )
         summary = ticket_data.summary
         body = ticket_data.description
     else:
