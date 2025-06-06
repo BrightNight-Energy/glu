@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v2.0.2 (2025-06-06)
+
+### Bug Fixes
+
+- Fix glu --help without config ([#31](https://github.com/BrightNight-Energy/glu/pull/31),
+  [`5d4d65f`](https://github.com/BrightNight-Energy/glu/commit/5d4d65f48aa5ce082557a3135f0bf8be8e4cc1eb))
+
+- Support python 3.10+ ([#29](https://github.com/BrightNight-Energy/glu/pull/29),
+  [`0b190e0`](https://github.com/BrightNight-Energy/glu/commit/0b190e0f2d13a86c3515c63036ddd2d62a5bb993))
+
+
 ## v2.0.1 (2025-06-02)
 
 ### Bug Fixes
