@@ -12,15 +12,13 @@ runs:
         path: '**/venv'
         key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('uv.lock') }}
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.13
       uses: actions/setup-python@v5
       with:
         python-version: "3.13.1"
 
     - name: Install UV
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-      shell: bash
+      uses: astral-sh/setup-uv@v6
 
     - name: Install dependencies
       run: |
