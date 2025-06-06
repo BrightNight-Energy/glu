@@ -314,6 +314,68 @@ def generate_branch_name(
     return response.content  # type: ignore
 
 
+def generate_final_commit_message(
+    chat_provider: ChatProvider | None,
+    model: str | None,
+    summary_commit_message: str,
+    pr_description: str,
+    error: str | None = None,
+    retry: int = 0,
+) -> CommitGeneration:
+    if not chat_provider:
+        print_error("Can't generate commit message with no API key")
+        raise typer.Exit(1)
+
+    response_format = {
+        "title": "{commit title}",
+        "type": "{conventional commit type}",
+        "body": "{commit body, bullet-pointed list}",
+    }
+
+    prompt = HumanMessage(
+        content=f"""
+        {f"Previous error: {error}"}
+
+        Provide a commit message for merge into the repo.
+        Here's the commit messages of all previous commits:
+        {summary_commit_message}
+
+        Here's the PR description:
+        {pr_description}
+
+        The branch name sometimes gives a hint to the primary objective of the work,
+        use it to inform the commit title.
+
+        Be concise in the body, using bullets to give a high level summary. Limit
+        to 5-10 bullets. Don't mention version bumps of the package itself or
+        testing changes unless testing is the primary purpose of the PR.
+        """
+    )
+
+    chat = _get_chat_model(chat_provider, model)
+
+    response = chat.invoke([prompt])  # type: ignore
+
+    try:
+        parsed = json.loads(remove_json_backticks(response.content))  # type: ignore
+        return CommitGeneration.model_validate(parsed)
+    except (JSONDecodeError, ValidationError) as err:
+        if isinstance(err, JSONDecodeError):
+            error = (
+                f"Your response was not in valid JSON format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}"
+            )
+        else:
+            error = (
+                f"Your response was in invalid format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}. Error: {err}"
+            )
+
+        return generate_final_commit_message(
+            chat_provider, model, summary_commit_message, pr_description, error, retry + 1
+        )
+
+
 def _generate_issuetype(
     chat: BaseChatModel,
     issuetypes: list[str],

@@ -5,7 +5,7 @@ import typer
 from git import Commit, GitCommandError, HookExecutionError, Repo
 from InquirerPy import inquirer
 
-from glu.ai import generate_branch_name, generate_commit_message
+from glu.ai import generate_branch_name
 from glu.config import PREFERENCES
 from glu.models import ChatProvider, CommitGeneration
 from glu.utils import print_error
@@ -95,14 +95,7 @@ def get_git_diff(repo: Repo | None = None) -> str:
     return repo.git.diff("HEAD")
 
 
-def generate_commit_with_ai(
-    chat_provider: ChatProvider | None,
-    model: str | None,
-    local_repo: Repo,
-) -> CommitGeneration:
-    diff = get_git_diff(local_repo)
-    commit_data = generate_commit_message(chat_provider, model, diff, local_repo.active_branch.name)
-
+def prompt_commit_edit(commit_data: CommitGeneration) -> CommitGeneration:
     if PREFERENCES.auto_accept_generated_commits:
         return commit_data
 
