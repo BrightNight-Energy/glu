@@ -3,7 +3,7 @@ name = "glu-cli"
 version = "2.0.1"
 description = "A CLI tool to facilitate the developer workflow"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "gitpython>=3.1.44",
     "glean-api-client>=0.5.1",
@@ -61,3 +61,4 @@ lint.select = [
     "F841",    # unused-variable (catches args too)
     "T201",    # flake8-print
 ]
+target-version = "py310"
