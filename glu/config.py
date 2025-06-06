@@ -132,9 +132,9 @@ def ensure_config():
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        default_config = {"env": EnvConfig.defaults(), "repos": {}}
+        default_config = Config(env=EnvConfig.defaults())
 
-        path.write_text(toml.dumps(default_config), encoding="utf-8")
+        path.write_text(toml.dumps(default_config.model_dump()), encoding="utf-8")
 
 
 def get_config() -> Config:

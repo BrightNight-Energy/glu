@@ -121,7 +121,7 @@ def init(
     cfg_path = config_path()
     rich.print(f"[grey70]Config file will be written to {cfg_path}[/]")
 
-    if cfg_path.exists():
+    if cfg_path.exists() and "your_github_pat" not in cfg_path.read_text():
         typer.confirm("Config file already exists. Overwrite?", default=False, abort=True)
 
     provider_configs = _setup_model_providers()
