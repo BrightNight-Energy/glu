@@ -130,9 +130,7 @@ def generate_ticket(
 
     error = f"Error on previous attempt: {previous_error}" if previous_error else ""
     changes = (
-        f"Requested changes from previous generation: {requested_changes}\n\n{
-            previous_attempt.model_dump_json()
-        }"
+        f"Requested changes from previous generation: {requested_changes}\n\n{previous_attempt.model_dump_json()}"
         if requested_changes and previous_attempt
         else ""
     )

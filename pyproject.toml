@@ -61,3 +61,4 @@ lint.select = [
     "F841",    # unused-variable (catches args too)
     "T201",    # flake8-print
 ]
+target-version = "py310"
