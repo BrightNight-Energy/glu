@@ -39,5 +39,9 @@ class CommitGeneration(BaseModel):
         return self
 
     @property
+    def full_title(self):
+        return f"{self.type}: {self.title}"
+
+    @property
     def message(self):
-        return f"{self.type}: {self.title}\n\n{self.body}"
+        return f"{self.full_title}\n\n{self.body}"

@@ -3,6 +3,7 @@ from github import Github
 from github.NamedUser import NamedUser
 from thefuzz import fuzz
 
+from glu.config import REPO_CONFIGS
 from glu.models import MatchedUser
 from glu.utils import filterable_menu, multi_select_menu, print_error
 
@@ -43,6 +44,17 @@ def prompt_for_reviewers(
         selected_reviewers.append(selected_reviewer)
 
     return selected_reviewers
+
+
+def get_repo_name_from_repo_config(project: str) -> str | None:
+    if not REPO_CONFIGS:
+        return None
+
+    for repo, config in REPO_CONFIGS.items():
+        if config.jira_project_key == project:
+            return repo
+
+    return None
 
 
 def _get_members(gh: Github, repo_name: str) -> list[NamedUser]:

@@ -9,10 +9,13 @@ from InquirerPy import inquirer
 from jira import JIRA, JIRAError
 
 from glu.ai import (
+    generate_commit_message,
     generate_description,
+    generate_final_commit_message,
     prompt_for_chat_provider,
 )
 from glu.config import (
+    DEFAULT_JIRA_PROJECT,
     EMAIL,
     GITHUB_PAT,
     JIRA_API_TOKEN,
@@ -20,7 +23,7 @@ from glu.config import (
     JIRA_READY_FOR_REVIEW_TRANSITION,
     JIRA_SERVER,
 )
-from glu.gh import prompt_for_reviewers
+from glu.gh import get_repo_name_from_repo_config, prompt_for_reviewers
 from glu.jira import (
     create_ticket,
     format_jira_ticket,
@@ -32,10 +35,11 @@ from glu.jira import (
 from glu.local import (
     checkout_to_branch,
     create_commit,
-    generate_commit_with_ai,
     get_first_commit_since_checkout,
+    get_git_diff,
     get_repo,
     get_repo_name,
+    prompt_commit_edit,
     push,
     remote_branch_in_sync,
 )
@@ -110,7 +114,12 @@ def create(  # noqa: C901
             case "Commit and push with AI message":
                 rich.print("[grey70]Generating commit...[/]\n")
                 create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
-                commit_data = generate_commit_with_ai(chat_provider, model, local_repo)
+                diff = get_git_diff(local_repo)
+                commit_data = prompt_commit_edit(
+                    generate_commit_message(
+                        chat_provider, model, diff, local_repo.active_branch.name
+                    )
+                )
 
                 checkout_to_branch(
                     local_repo, repo.default_branch, commit_data.message, chat_provider, model
@@ -248,6 +257,130 @@ def create(  # noqa: C901
         raise typer.Exit(1) from err
 
 
+@app.command(short_help="Merge a PR")
+def merge(  # noqa: C901
+    pr_num: Annotated[int, typer.Option("--pr", help="PR number")],
+    repo: Annotated[
+        str | None,
+        typer.Option("--repo", "-r", help="Github repo", show_default=False),
+    ] = None,
+    ticket: Annotated[
+        str | None,
+        typer.Option("--ticket", "-t", help="Jira ticket number", show_default=False),
+    ] = None,
+    project: Annotated[
+        str | None,
+        typer.Option("--project", "-p", help="Jira project (defaults to default Jira project)"),
+    ] = None,
+    provider: Annotated[
+        str | None,
+        typer.Option(
+            "--provider",
+            "-pr",
+            help="AI model provider",
+            show_default=False,
+        ),
+    ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="AI model",
+            show_default=False,
+        ),
+    ] = None,
+):
+    auth = Auth.Token(GITHUB_PAT)
+    gh = Github(auth=auth)
+
+    if project:
+        jira_project = project
+    elif DEFAULT_JIRA_PROJECT:
+        project_confirmation = typer.confirm(f"Confirm project is {DEFAULT_JIRA_PROJECT}?")
+        if project_confirmation:
+            jira_project = DEFAULT_JIRA_PROJECT
+        else:
+            jira_project = typer.prompt("Enter Jira project name")
+    else:
+        jira_project = typer.prompt("Enter Jira project name")
+
+    if repo:
+        repo_name = repo
+    else:
+        try:
+            local_repo = get_repo()
+            repo_name = get_repo_name(local_repo)
+        except InvalidGitRepositoryError:
+            repo = get_repo_name_from_repo_config(jira_project)
+            if not repo:
+                repo_name = f"{typer.prompt('Enter org name')}/{typer.prompt('Enter repo name')}"
+            else:
+                repo_name = repo
+
+    gh_repo = gh.get_repo(repo_name)
+
+    pr = gh_repo.get_pull(pr_num)
+    commits = pr.get_commits()
+
+    all_commit_messages = [commit_ref.commit.message for commit_ref in commits]
+    summary_commit_message = "\n\n".join(f"* {msg}" for msg in all_commit_messages)
+
+    commit_choice = inquirer.select(
+        "You have uncommitted changes.",
+        ["Commit with AI message", "Create manual message"],
+    ).execute()
+
+    match commit_choice:
+        case "Commit with AI message":
+            chat_provider = prompt_for_chat_provider(provider, raise_if_no_api_key=True)
+
+            if ticket:
+                if not ticket.isdigit():
+                    ticket = typer.prompt("Enter ticket number")
+                    if not ticket:
+                        print_error("No ticket number provided")
+                        raise typer.Exit(1)
+                formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
+            else:
+                text = f"{summary_commit_message}\n{pr.body}"
+                jira_matched = _search_jira_key_in_text(text, jira_project)
+                if jira_matched:
+                    formatted_ticket = text[jira_matched.pos : jira_matched.endpos]
+                else:
+                    ticket = typer.prompt("Enter ticket number")
+                    if not ticket:
+                        print_error("No ticket number provided")
+                        raise typer.Exit(1)
+                    formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
+
+            rich.print("[grey70]Generating commit...[/]\n")
+
+            commit_data = prompt_commit_edit(
+                generate_final_commit_message(
+                    chat_provider,
+                    model,
+                    summary_commit_message,
+                    pr.body,
+                )
+            )
+            commit_body = f"{commit_data.body}\n\n{formatted_ticket}"
+            commit_title = commit_data.full_title
+        case "Create manual message":
+            commit_msg = typer.edit(summary_commit_message)
+            if not commit_msg:
+                print_error("No commit message provided")
+                raise typer.Exit(0)
+            commit_title = commit_msg.split("\n\n")[0]
+            commit_body = commit_msg.split("\n\n")[1]
+        case _:
+            print_error("No matching choice for commit was provided")
+            raise typer.Exit(1)
+
+    pr.merge(commit_body, commit_title, merge_method="squash")
+    rich.print(f":rocket: Merged PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/]")
+
+
 def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | None:
     commit_message = commit.message if isinstance(commit.message, str) else commit.message.decode()
     try:
@@ -273,6 +406,22 @@ def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | 
         return body
 
     return body.replace(ticket, f"[{ticket_str}]")
+
+
+def _search_jira_key_in_text(text: str, jira_project: str) -> re.Match[str] | None:
+    """
+    Search for any substring matching [{jira_project}-NUMBERS/LETTERS] (e.g. [ABC-XX1234]
+    or ABC-XX1234).
+
+    Args:
+        text: The input string to search.
+
+    Returns:
+        The match, if found.
+    """
+    pattern = rf"\[?{jira_project}-[A-Za-z0-9]+\]?"
+
+    return re.search(pattern, text)
 
 
 def _add_jira_key_to_description(text: str, jira_project: str, jira_key: str | int) -> str:
