@@ -1,0 +1,4 @@
+{
+  "summary": "Add pexpect/pytest tests for main commands with env-var controlled service mocks",
+  "description": "Description:\n- Add tests for main repository commands using pexpect and pytest.\n- Use environment variables to toggle mocks for GitHub, Jira, Git, and AI.\n- Create pytest fixtures and helper functions for mock setup.\n- Cover success, failure, and edge-case scenarios.\n\nAcceptance criteria:\n- Each CLI command has at least one test for success and one for failure.\n- Tests use pexpect to spawn and interact with the commands.\n- Environment variable flags correctly enable/disable external service mocks.\n- Pytest fixtures are reusable and documented.\n- CI pipeline runs tests and reports results without real API calls."
+}

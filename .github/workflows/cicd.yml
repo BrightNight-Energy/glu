@@ -30,6 +30,7 @@ jobs:
           uv sync
           ruff check
           mypy glu --ignore-missing-imports
+          pytest
 
   releases:
     name: Release all Github packages

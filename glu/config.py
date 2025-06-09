@@ -123,6 +123,11 @@ class Config(BaseModel):
 
 
 def config_path() -> Path:
+    if os.getenv("GLU_TEST"):
+        from tests import TESTS_DATA_DIR
+
+        return TESTS_DATA_DIR / "config.toml"
+
     base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
     return base / "glu" / "config.toml"
 

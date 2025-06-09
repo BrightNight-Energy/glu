@@ -1,0 +1,5 @@
+{
+  "title": "refactor: Unify client abstractions for ai, github, jira, and git operations",
+  "type": "refactor",
+  "body": "- Introduce ChatClient to encapsulate AI provider/model selection and interaction, replacing direct BaseChatModel usage and _get_chat_model \nhelper\n- Add GithubClient, JiraClient, and GitClient classes to centralize GitHub API, Jira API, and local Git operations, removing scattered helper \nfunctions\n- Update CLI and generation functions (commit, branch name, PR description, ticket) to accept client objects and use their methods instead of \nmixed global helpers\n- Harmonize generate_* functions to use ChatClient.run() and standardize prompts without HumanMessage wrapper\n- Bump glu-cli version to 2.0.2, add pytest, pexpect, pytest-mock to dev dependencies in pyproject.toml and uv.lock\n- Remove unused imports, deprecated functions (_get_chat_model, remote_branch_in_sync, etc.), and simplify code paths for cleaner maintenance"
+}

@@ -1,19 +1,77 @@
+import os
+from typing import Literal
+
 import rich
 import typer
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
-from jira import JIRA, Issue
+from jira import JIRA, Issue, Project
 
-from glu.ai import generate_ticket
-from glu.config import REPO_CONFIGS
-from glu.models import ChatProvider, IdReference, TicketGeneration
+from glu.ai import ChatClient, generate_ticket
+from glu.config import EMAIL, JIRA_API_TOKEN, JIRA_SERVER, REPO_CONFIGS
+from glu.models import IdReference, JiraUser, TicketGeneration
 from glu.utils import filterable_menu, print_error
 
 
-def get_user_from_jira(jira: JIRA, user_query: str | None) -> IdReference:
+class JiraClient:
+    def __init__(self):
+        self._client = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
+
+    def myself(self) -> JiraUser:
+        myself = self._client.myself()
+        return JiraUser(myself["accountId"], myself["displayName"])
+
+    def projects(self) -> list[Project]:
+        return self._client.projects()
+
+    def search_users(self, query: str) -> list[JiraUser]:
+        return self._client.search_issues(query)
+
+    def get_issuetypes(self, project: str) -> list[str]:
+        return [issuetype.name for issuetype in self._client.issue_types_for_project(project)]
+
+    def get_transitions(self, ticket_id: str) -> list[str]:
+        return [transition["name"] for transition in self._client.transitions(ticket_id)]
+
+    def transition_issue(self, ticket_id: str, transition: str) -> None:
+        self._client.transition_issue(ticket_id, transition)
+
+    def create_ticket(
+        self,
+        project: str,
+        issuetype: str,
+        summary: str,
+        description: str | None,
+        reporter_ref: IdReference,
+        assignee_ref: IdReference,
+        **extra_fields: dict,
+    ) -> Issue:
+        fields = extra_fields | {
+            "project": project,
+            "issuetype": issuetype,
+            "description": description,
+            "summary": summary,
+            "reporter": reporter_ref.model_dump(),
+            "assignee": assignee_ref.model_dump(),
+        }
+
+        return self._client.create_issue(fields)
+
+
+def get_jira_client() -> JiraClient:
+    if os.getenv("GLU_TEST"):
+        from tests.conftest import FakeJiraClient
+
+        return FakeJiraClient()  # type: ignore
+    return JiraClient()
+
+
+def get_user_from_jira(
+    jira: JiraClient, user_query: str | None, user_type: Literal["reporter", "assignee"]
+) -> IdReference:
     myself = jira.myself()
     if not user_query or user_query in ["me", "@me"]:
-        return IdReference(id=myself["accountId"])
+        return IdReference(id=myself.accountId)
 
     users = jira.search_users(query=user_query)
     if not len(users):
@@ -24,14 +82,14 @@ def get_user_from_jira(jira: JIRA, user_query: str | None) -> IdReference:
         return IdReference(id=users[0].accountId)
 
     choice = inquirer.select(
-        "Select reporter:",
+        f"Select {user_type}:",
         choices=[Choice(user.accountId, user.displayName) for user in users],
     ).execute()
 
     return IdReference(id=choice)
 
 
-def get_jira_project(jira: JIRA, repo_name: str | None, project: str | None = None) -> str:
+def get_jira_project(jira: JiraClient, repo_name: str | None, project: str | None = None) -> str:
     if REPO_CONFIGS.get(repo_name or "") and REPO_CONFIGS[repo_name or ""].jira_project_key:
         return REPO_CONFIGS[repo_name or ""].jira_project_key  # type: ignore
 
@@ -41,10 +99,6 @@ def get_jira_project(jira: JIRA, repo_name: str | None, project: str | None = No
         return project.upper()
 
     return filterable_menu("Select project: ", project_keys)
-
-
-def get_jira_issuetypes(jira: JIRA, project: str) -> list[str]:
-    return [issuetype.name for issuetype in jira.issue_types_for_project(project)]
 
 
 def format_jira_ticket(jira_key: str, ticket: str | int, with_brackets: bool = False) -> str:
@@ -59,9 +113,8 @@ def format_jira_ticket(jira_key: str, ticket: str | int, with_brackets: bool = F
 
 
 def generate_ticket_with_ai(
+    chat_client: ChatClient,
     repo_name: str | None,
-    chat_provider: ChatProvider | None,
-    model: str | None,
     issuetype: str | None = None,
     issuetypes: list[str] | None = None,
     ai_prompt: str | None = None,
@@ -70,9 +123,8 @@ def generate_ticket_with_ai(
     previous_attempt: TicketGeneration | None = None,
 ) -> TicketGeneration:
     ticket_data = generate_ticket(
+        chat_client,
         repo_name,
-        chat_provider,
-        model,
         issuetype,
         issuetypes,
         ai_prompt,
@@ -118,9 +170,8 @@ def generate_ticket_with_ai(
                 print_error("No changes requested.")
                 raise typer.Exit(1)
             return generate_ticket_with_ai(
+                chat_client,
                 repo_name,
-                chat_provider,
-                model,
                 issuetype,
                 issuetypes,
                 ai_prompt,
@@ -134,9 +185,8 @@ def generate_ticket_with_ai(
                 print_error("No prompt provided.")
                 raise typer.Exit(1)
             return generate_ticket_with_ai(
+                chat_client,
                 repo_name,
-                chat_provider,
-                model,
                 issuetype,
                 issuetypes,
                 amended_prompt,
@@ -146,25 +196,3 @@ def generate_ticket_with_ai(
             )
         case _:
             raise typer.Exit(0)
-
-
-def create_ticket(
-    jira: JIRA,
-    project: str,
-    issuetype: str,
-    summary: str,
-    description: str | None,
-    reporter_ref: IdReference,
-    assignee_ref: IdReference,
-    **extra_fields: dict,
-) -> Issue:
-    fields = extra_fields | {
-        "project": project,
-        "issuetype": issuetype,
-        "description": description,
-        "summary": summary,
-        "reporter": reporter_ref.model_dump(),
-        "assignee": assignee_ref.model_dump(),
-    }
-
-    return jira.create_issue(fields)
