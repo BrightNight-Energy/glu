@@ -7,7 +7,8 @@ from tests.utils import Key, get_terminal_text
 
 
 def test_init(env_cli):
-    os.remove(TESTS_DATA_DIR / "config.toml")
+    if (TESTS_DATA_DIR / "config.toml").exists():
+        os.remove(TESTS_DATA_DIR / "config.toml")
 
     child = pexpect.spawn("glu init", env=env_cli, encoding="utf-8")
 
