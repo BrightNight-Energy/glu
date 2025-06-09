@@ -31,9 +31,9 @@ def test_init(env_cli):
     child.expect("Exit")
 
     text = get_terminal_text(child.before + child.after)
-    assert (
-        "Config file will be written to /Users/marchermann/dev/glu/tests/data/config.toml" in text
-    )
+    assert "Config file will be written to" in text
+    assert "glu/tests/data/config.toml" in text
+
     assert "Select provider" in text
     assert "OpenAI" in text
     assert "Glean" in text
