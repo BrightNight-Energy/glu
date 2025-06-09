@@ -1,4 +1,4 @@
-# ruff: noqa: ARG002
+# ruff: noqa: ARG002, E501
 import json
 import os
 import random
@@ -201,7 +201,10 @@ class FakeChatClient:
             return "Chore"
         if "Provide a description and summary for a Jira" in msg:
             return json.dumps(load_json("ai_ticket.json"))
-        return "Test content"
+        if "Provide a description for the PR diff below." in msg:
+            with open(TESTS_DATA_DIR / "pr_description.txt", "r") as f:
+                return f.read()
+        raise NotImplementedError("AI test message not implemented")
 
     def set_chat_model(self, provider: ChatProvider | None) -> None:
         pass
@@ -229,4 +232,5 @@ def env_cli():
     env = os.environ.copy()
     env["TERM"] = "dumb"
     env["GLU_TEST"] = "1"
+    env["VISUAL"] = "vim"
     return env

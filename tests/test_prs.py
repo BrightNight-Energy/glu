@@ -64,8 +64,12 @@ def test_create_pr_full_flow_w_ai(write_config_w_repo_config, env_cli):
 
     child.expect(re.compile(r"https?://\S+"))
     text = get_terminal_text(child.before + child.after).strip()
+
+    assert "### Description" in text
+
+    assert re.search(r"- \*\*Jira Ticket\*\*: \[TEST-\d+]", text)
+
     lines = text.splitlines()
-    assert lines[-1].startswith("http")
     assert (
         lines[-2] == "🚀 Created PR in github/Test-Repo with title feat: Add testing to my CLI app"
     )

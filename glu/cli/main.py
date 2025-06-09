@@ -266,7 +266,7 @@ def _setup_repos(
 def _setup_jira_config(
     templates: dict[str, JiraIssueTemplateConfig] | None = None,
 ) -> dict[str, JiraIssueTemplateConfig]:
-    issuetype = typer.prompt("Issue type? (Generally, 'Bug', 'Story', 'Chore', etc")
+    issuetype = typer.prompt("Issue type? (Generally, 'Bug', 'Story', 'Chore', etc)")
     template = typer.edit("Description:\n{description}") or "Description:\n{description}"
 
     issuetemplate = {issuetype: JiraIssueTemplateConfig(issuetemplate=template)}
