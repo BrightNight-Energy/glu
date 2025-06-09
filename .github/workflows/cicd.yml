@@ -24,12 +24,10 @@ jobs:
       - name: Install UV
         uses: astral-sh/setup-uv@v6
       - name: Install packages
+        run: uv sync
+      - name: Lint, format check and test
         run: |
-          python${{ matrix.python-version }} -m venv .venv
           source .venv/bin/activate
-          uv sync
-      - name: Test service
-        run: |
           ruff check
           mypy glu --ignore-missing-imports
           pytest
