@@ -31,7 +31,6 @@ jobs:
           ruff check
           mypy glu --ignore-missing-imports
           pytest
-          git status
 
   releases:
     name: Release all Github packages
