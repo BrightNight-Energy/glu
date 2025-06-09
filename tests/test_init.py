@@ -83,4 +83,4 @@ def test_init(env_cli):
     assert "Yes" in auto_accept_generated_commits_menu
     child.send(Key.ENTER.value)
 
-    child.expect("✅ Config file written to /Users/marchermann/dev/glu/tests/data/config.toml")
+    child.expect("✅ Config file written to")
