@@ -1,0 +1,796 @@
+diff --git a/glu/ai.py b/glu/ai.py
+index 8dbe1bf..120df8f 100644
+--- a/glu/ai.py
++++ b/glu/ai.py
+@@ -28,7 +28,7 @@ from glu.utils import print_error, remove_json_backticks
+
+ def generate_description(
+     repo: Repository,
+-    local_repo: Repo,
++    diff: str,
+     body: str | None,
+     chat_provider: ChatProvider | None,
+     model: str | None,
+@@ -57,10 +57,6 @@ def generate_description(
+             if jira_project:
+                 template = template.replace("GLU", jira_project)
+
+-    diff = local_repo.git.diff(
+-        getattr(local_repo.heads, repo.default_branch).commit.hexsha, local_repo.head.commit.hexsha
+-    )
+-
+     prompt = HumanMessage(
+         content=f"""
+         Provide a description for the PR diff below.
+diff --git a/glu/cli/pr.py b/glu/cli/pr.py
+index 260290c..d31ebdd 100644
+--- a/glu/cli/pr.py
++++ b/glu/cli/pr.py
+@@ -6,26 +6,22 @@ import typer
+ from git import Commit, GitCommandError, InvalidGitRepositoryError
+ from github import Auth, Github, GithubException
+ from InquirerPy import inquirer
+-from jira import JIRA, JIRAError
++from jira import JIRAError
+
+ from glu.ai import (
+     generate_description,
+     prompt_for_chat_provider,
+ )
+ from glu.config import (
+-    EMAIL,
+     GITHUB_PAT,
+-    JIRA_API_TOKEN,
+     JIRA_IN_PROGRESS_TRANSITION,
+     JIRA_READY_FOR_REVIEW_TRANSITION,
+-    JIRA_SERVER,
+ )
+ from glu.gh import prompt_for_reviewers
+ from glu.jira import (
+-    create_ticket,
+     format_jira_ticket,
+     generate_ticket_with_ai,
+-    get_jira_issuetypes,
++    get_jira_client,
+     get_jira_project,
+     get_user_from_jira,
+ )
+@@ -38,6 +34,7 @@ from glu.local import (
+     get_repo_name,
+     push,
+     remote_branch_in_sync,
++    Git,
+ )
+ from glu.utils import (
+     print_error,
+@@ -84,8 +81,7 @@ def create(  # noqa: C901
+     ] = None,
+ ):
+     try:
+-        local_repo = get_repo()
+-        repo_name = get_repo_name(local_repo)
++        git = Git()
+     except InvalidGitRepositoryError as err:
+         print_error("Not valid a git repository")
+         raise typer.Exit(1) from err
+@@ -94,10 +90,10 @@ def create(  # noqa: C901
+
+     auth = Auth.Token(GITHUB_PAT)
+     gh = Github(auth=auth)
+-    repo = gh.get_repo(repo_name)
++    repo = gh.get_repo(git.repo_name)
+
+     latest_commit: Commit | None = None
+-    if local_repo.is_dirty():
++    if git.is_dirty:
+         commit_choice = inquirer.select(
+             "You have uncommitted changes.",
+             [
+@@ -109,50 +105,48 @@ def create(  # noqa: C901
+         match commit_choice:
+             case "Commit and push with AI message":
+                 rich.print("[grey70]Generating commit...[/]\n")
+-                create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
+-                commit_data = generate_commit_with_ai(chat_provider, model, local_repo)
++                git.create_commit( "chore: [dry run commit]", dry_run=True)
++                commit_data = generate_commit_with_ai(chat_provider, model, git)
+
+                 checkout_to_branch(
+-                    local_repo, repo.default_branch, commit_data.message, chat_provider, model
++                    git, repo.default_branch, commit_data.message, chat_provider, model
+                 )
+-                latest_commit = create_commit(local_repo, commit_data.message)
+-                push(local_repo)
++                latest_commit = git.create_commit(commit_data.message)
++                git.push()
+             case "Commit and push with manual message":
+-                create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
++                git.create_commit( "chore: [dry run commit]", dry_run=True)
+                 commit_message = typer.edit("")
+                 if not commit_message:
+                     print_error("No commit message provided")
+                     raise typer.Exit(0)
+
+                 checkout_to_branch(
+-                    local_repo, repo.default_branch, commit_message, chat_provider, model
++                    git, repo.default_branch, commit_message, chat_provider, model
+                 )
+-                latest_commit = create_commit(local_repo, commit_message)
+-                push(local_repo)
++                latest_commit = git.create_commit(commit_message)
++                git.push()
+             case "Proceed anyway":
+-                checkout_to_branch(local_repo, repo.default_branch, commit_message=None)
++                checkout_to_branch(git, repo.default_branch, commit_message=None)
+             case _:
+                 print_error("No matching choice for commit was provided")
+                 raise typer.Exit(1)
+
+-    try:
+-        local_repo.remotes["origin"].fetch(local_repo.active_branch.name, prune=True)
+-    except GitCommandError:
+-        push(local_repo)
++    if not git.confirm_branch_exists_in_remote():
++        git.push()
+
+-    if not remote_branch_in_sync(local_repo.active_branch.name, repo=local_repo):
++    if not git.remote_branch_in_sync():
+         confirm_push = typer.confirm(
+             "Local branch is not up to date with remote. Push to remote now?"
+         )
+         if confirm_push:
+-            push(local_repo)
++            git.push()
+
+-    jira = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
++    jira = get_jira_client()
+
+-    first_commit = get_first_commit_since_checkout()
++    first_commit = git.get_first_commit_since_checkout()
+     commit = latest_commit or first_commit
+
+-    jira_project = get_jira_project(jira, repo_name, project) if ticket else ""
++    jira_project = get_jira_project(jira, git.repo_name, project) if ticket else ""
+
+     title = (
+         first_commit.summary.decode()
+@@ -161,11 +155,11 @@ def create(  # noqa: C901
+     )
+     body = _create_pr_body(commit, jira_project, ticket)
+
+-    selected_reviewers = prompt_for_reviewers(gh, reviewers, repo_name, draft)
++    selected_reviewers = prompt_for_reviewers(gh, reviewers, git.repo_name, draft)
+
+     rich.print("[grey70]Generating description...[/]")
+     pr_description = generate_description(
+-        repo, local_repo, body, chat_provider, model, jira_project
++        repo, git.get_diff('main', repo.default_branch), body, chat_provider, model, jira_project
+     )
+
+     if not ticket:
+@@ -175,12 +169,12 @@ def create(  # noqa: C901
+             show_default=False,
+         )
+         if ticket_choice.lower() == "g":
+-            jira_project = jira_project or get_jira_project(jira, repo_name, project)
++            jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
+             rich.print("[grey70]Generating ticket...[/]\n")
+
+-            issuetypes = get_jira_issuetypes(jira, jira_project)
++            issuetypes = jira.get_issuetypes(jira_project)
+             ticket_data = generate_ticket_with_ai(
+-                repo_name,
++                git.repo_name,
+                 chat_provider,
+                 model,
+                 issuetypes=issuetypes,
+@@ -189,8 +183,7 @@ def create(  # noqa: C901
+
+             myself_ref = get_user_from_jira(jira, user_query=None)
+
+-            jira_issue = create_ticket(
+-                jira,
++            jira_issue = jira.create_ticket(
+                 jira_project,
+                 ticket_data.issuetype,
+                 ticket_data.summary,
+@@ -201,7 +194,7 @@ def create(  # noqa: C901
+             ticket = jira_issue.key.split("-")[1]
+         elif ticket_choice.isdigit():
+             ticket = ticket_choice
+-            jira_project = jira_project or get_jira_project(jira, repo_name, project)
++            jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
+         else:
+             return
+
+@@ -210,7 +203,7 @@ def create(  # noqa: C901
+
+     pr = repo.create_pull(
+         repo.default_branch,
+-        local_repo.active_branch.name,
++        git.current_branch,
+         title=title,
+         body=pr_description or body or "",
+         draft=draft,
+@@ -225,8 +218,8 @@ def create(  # noqa: C901
+                 print_error(f"Failed to add reviewer {selected_reviewer.login}: {e}")
+
+     rich.print(f"\n[grey70]{pr_description}[/]\n")
+-    rich.print(f":rocket: Created PR in [blue]{repo_name}[/] with title [bold green]{title}[/]")
+-    rich.print(f"[dark violet]https://github.com/{repo_name}/pull/{pr.number}[/]")
++    rich.print(f":rocket: Created PR in [blue]{git.repo_name}[/] with title [bold green]{title}[/]")
++    rich.print(f"[dark violet]https://github.com/{git.repo_name}/pull/{pr.number}[/]")
+
+     if not ticket:
+         return
+diff --git a/glu/cli/ticket.py b/glu/cli/ticket.py
+index 56308f7..7e96d45 100644
+--- a/glu/cli/ticket.py
++++ b/glu/cli/ticket.py
+@@ -4,19 +4,17 @@ import rich
+ import typer
+ from git import InvalidGitRepositoryError
+ from InquirerPy import inquirer
+-from jira import JIRA
+ from typer import Context
+
+ from glu.ai import prompt_for_chat_provider
+-from glu.config import DEFAULT_JIRA_PROJECT, EMAIL, JIRA_API_TOKEN, JIRA_SERVER
++from glu.config import DEFAULT_JIRA_PROJECT
+ from glu.jira import (
+-    create_ticket,
+     generate_ticket_with_ai,
+-    get_jira_issuetypes,
++    get_jira_client,
+     get_jira_project,
+     get_user_from_jira,
+ )
+-from glu.local import get_repo_name
++from glu.local import get_repo_name, Git
+ from glu.utils import get_kwargs, prompt_or_edit
+
+ app = typer.Typer()
+@@ -69,10 +67,10 @@ def create(
+ ):
+     extra_fields: dict[str, Any] = get_kwargs(ctx)
+
+-    jira = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
++    jira = get_jira_client()
+
+     try:
+-        repo_name = get_repo_name()
++        repo_name = Git().repo_name
+     except InvalidGitRepositoryError:
+         repo_name = None
+
+@@ -80,7 +78,7 @@ def create(
+     if not project:
+         project = get_jira_project(jira, repo_name)
+
+-    types = get_jira_issuetypes(jira, project or "")
++    types = jira.get_issuetypes(project or "")
+     if not type:
+         issuetype = inquirer.select("Select type:", types).execute()
+     else:
+@@ -121,8 +119,8 @@ def create(
+     if priority:
+         extra_fields["priority"] = priority
+
+-    issue = create_ticket(
+-        jira, project, issuetype, summary or "", body, reporter_ref, assignee_ref, **extra_fields
++    issue = jira.create_ticket(
++        project, issuetype, summary or "", body, reporter_ref, assignee_ref, **extra_fields
+     )
+
+     rich.print(f":page_with_curl: Created issue [bold red]{issue.key}[/]")
+diff --git a/glu/jira.py b/glu/jira.py
+index c4edf22..92727c1 100644
+--- a/glu/jira.py
++++ b/glu/jira.py
+@@ -1,19 +1,68 @@
++import os
++
+ import rich
+ import typer
+ from InquirerPy import inquirer
+ from InquirerPy.base import Choice
+-from jira import JIRA, Issue
++from jira import JIRA, Issue, Project
+
+ from glu.ai import generate_ticket
+-from glu.config import REPO_CONFIGS
+-from glu.models import ChatProvider, IdReference, TicketGeneration
++from glu.config import EMAIL, JIRA_API_TOKEN, JIRA_SERVER, REPO_CONFIGS
++from glu.models import ChatProvider, IdReference, JiraUser, TicketGeneration
+ from glu.utils import filterable_menu, print_error
+
+
+-def get_user_from_jira(jira: JIRA, user_query: str | None) -> IdReference:
++class JiraClient:
++    def __init__(self):
++        self._client = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
++
++    def myself(self) -> JiraUser:
++        myself = self._client.myself()
++        return JiraUser(myself["accountId"], myself["displayName"])
++
++    def projects(self) -> list[Project]:
++        return self._client.projects()
++
++    def search_users(self, query: str) -> list[JiraUser]:
++        return self._client.search_issues(query)
++
++    def get_issuetypes(self, project: str) -> list[str]:
++        return [issuetype.name for issuetype in self._client.issue_types_for_project(project)]
++
++    def create_ticket(
++        self,
++        project: str,
++        issuetype: str,
++        summary: str,
++        description: str | None,
++        reporter_ref: IdReference,
++        assignee_ref: IdReference,
++        **extra_fields: dict,
++    ) -> Issue:
++        fields = extra_fields | {
++            "project": project,
++            "issuetype": issuetype,
++            "description": description,
++            "summary": summary,
++            "reporter": reporter_ref.model_dump(),
++            "assignee": assignee_ref.model_dump(),
++        }
++
++        return self._client.create_issue(fields)
++
++
++def get_jira_client() -> JiraClient:
++    if os.getenv("GLU_TEST"):
++        from tests.conftest import FakeJiraClient
++
++        return FakeJiraClient()  # type: ignore
++    return JiraClient()
++
++
++def get_user_from_jira(jira: JiraClient, user_query: str | None) -> IdReference:
+     myself = jira.myself()
+     if not user_query or user_query in ["me", "@me"]:
+-        return IdReference(id=myself["accountId"])
++        return IdReference(id=myself.accountId)
+
+     users = jira.search_users(query=user_query)
+     if not len(users):
+@@ -31,7 +80,7 @@ def get_user_from_jira(jira: JIRA, user_query: str | None) -> IdReference:
+     return IdReference(id=choice)
+
+
+-def get_jira_project(jira: JIRA, repo_name: str | None, project: str | None = None) -> str:
++def get_jira_project(jira: JiraClient, repo_name: str | None, project: str | None = None) -> str:
+     if REPO_CONFIGS.get(repo_name or "") and REPO_CONFIGS[repo_name or ""].jira_project_key:
+         return REPO_CONFIGS[repo_name or ""].jira_project_key  # type: ignore
+
+@@ -43,10 +92,6 @@ def get_jira_project(jira: JIRA, repo_name: str | None, project: str | None = No
+     return filterable_menu("Select project: ", project_keys)
+
+
+-def get_jira_issuetypes(jira: JIRA, project: str) -> list[str]:
+-    return [issuetype.name for issuetype in jira.issue_types_for_project(project)]
+-
+-
+ def format_jira_ticket(jira_key: str, ticket: str | int, with_brackets: bool = False) -> str:
+     try:
+         ticket_num = int(ticket)
+@@ -146,25 +191,3 @@ def generate_ticket_with_ai(
+             )
+         case _:
+             raise typer.Exit(0)
+-
+-
+-def create_ticket(
+-    jira: JIRA,
+-    project: str,
+-    issuetype: str,
+-    summary: str,
+-    description: str | None,
+-    reporter_ref: IdReference,
+-    assignee_ref: IdReference,
+-    **extra_fields: dict,
+-) -> Issue:
+-    fields = extra_fields | {
+-        "project": project,
+-        "issuetype": issuetype,
+-        "description": description,
+-        "summary": summary,
+-        "reporter": reporter_ref.model_dump(),
+-        "assignee": assignee_ref.model_dump(),
+-    }
+-
+-    return jira.create_issue(fields)
+diff --git a/glu/local.py b/glu/local.py
+index 3a290a9..1550065 100644
+--- a/glu/local.py
++++ b/glu/local.py
+@@ -1,4 +1,5 @@
+ from pathlib import Path
++from typing import overload, Literal
+
+ import rich
+ import typer
+@@ -11,6 +12,147 @@ from glu.models import ChatProvider, CommitGeneration
+ from glu.utils import print_error
+
+
++class Git:
++    def __init__(self):
++        # get remote repo by parsing .git/config
++        cwd = Path.cwd()
++        self.repo = Repo(cwd, search_parent_directories=True)
++
++    def get_first_commit_since_checkout(self) -> Commit:
++        """
++        Return the first commit made on the current branch since it was last checked out.
++        If no new commits have been made, returns None.
++        """
++        head_ref = self.repo.head  # Reference object for HEAD
++
++        # 1) Find the SHA that HEAD pointed to immediately after the last checkout
++        checkout_sha = None
++        for entry in reversed(head_ref.log()):  # this walks the reflog
++            # reflog messages look like: "checkout: moving from main to feature/foo"
++            if entry.message.startswith("checkout: moving from"):
++                checkout_sha = entry.newhexsha
++                break
++
++        if checkout_sha is None:
++            print_error("Could not find a commit on this branch")
++            raise typer.Exit(1)
++
++        # 2) List all commits exclusive of that checkout point up to current HEAD
++        rev_range = f"{checkout_sha}..{head_ref.commit.hexsha}"
++        commits = list(self.repo.iter_commits(rev_range))
++
++        if not commits:
++            print_error("Could not find a commit on this branch")
++            raise typer.Exit(1)
++
++        # 3) iter_commits returns newest→oldest, so the last item is the _first_ commit
++        return commits[-1]
++
++    def remote_branch_in_sync(
++        self, branch: str | None = None, remote_name: str = "origin"
++    ) -> bool:
++        """
++        Returns True if:
++          - remote_name/branch_name exists, and
++          - its commit SHA == the local branch’s commit SHA.
++        Returns False otherwise (including if the remote branch doesn’t exist).
++        """
++        branch_name = branch or self.current_branch
++
++        # 1) Make sure we have up-to-date remote refs
++        try:
++            self.repo.remotes[remote_name].fetch(branch_name, prune=True)
++        except GitCommandError:
++            # fetch failed (e.g. no such remote)
++            return False
++
++        # 2) Does the remote branch exist?
++        remote_ref_name = f"{remote_name}/{branch_name}"
++        refs = [ref.name for ref in self.repo.refs]
++        if remote_ref_name not in refs:
++            return False
++
++        # 3) Compare SHAs
++        local_sha = self.repo.heads[branch_name].commit.hexsha
++        remote_sha = self.repo.refs[remote_ref_name].commit.hexsha
++
++        return local_sha == remote_sha
++
++    @overload
++    def get_diff(self, to: Literal['head']) -> str: ...
++
++    @overload
++    def get_diff(self, to: Literal["main"], default_branch: str) -> str: ...
++
++    def get_diff(self, to: Literal['main', 'head'] = "head", default_branch: str | None = None) -> str:
++        match to:
++            case "head":
++                return self.repo.git.diff('HEAD')
++            case "main" if default_branch:
++                return self.repo.git.diff(
++                    getattr(self.repo.heads, default_branch).commit.hexsha, self.repo.head.commit.hexsha
++                )
++            case _:
++                print_error('Diff method not implemented')
++                raise typer.Exit(1)
++
++    def create_commit(
++        self, message: str, dry_run: bool = False, retry: int = 0
++    ) -> Commit:
++        try:
++            self.repo.git.add(all=True)
++            commit = self.repo.index.commit(message)
++            if dry_run:
++                self.repo.git.reset("HEAD~1")
++            return commit
++        except HookExecutionError as err:
++            if retry == 0:
++                if not dry_run:
++                    rich.print("[warning]Pre-commit hooks failed, retrying...[/]")
++                return self.create_commit(message, dry_run, retry + 1)
++
++            rich.print(err)
++            raise typer.Exit(1) from err
++
++    def push(self) -> None:
++        try:
++            self.repo.git.push("origin", self.repo.active_branch.name)
++        except GitCommandError as err:
++            rich.print(err)
++            raise typer.Exit(1) from err
++
++    def checkout(self, branch_name: str) -> None:
++        self.repo.git.checkout("-b", branch_name)
++
++    def confirm_branch_exists_in_remote(self) -> bool:
++        # FIXME: should use github for this purpose
++        try:
++            self.repo.remotes["origin"].fetch(self.current_branch, prune=True)
++            return True
++        except GitCommandError:
++            return False
++
++    @property
++    def repo_name(self):
++        if not len(self.repo.remotes):
++            print_error("No remote found for git config")
++            raise typer.Exit(1)
++
++        return self.repo.remotes.origin.url.split(":")[1].replace(".git", "")
++
++    @property
++    def current_branch(self) -> str:
++        return self.repo.active_branch.name
++
++    @property
++    def default_branch(self) -> str:
++        return self.repo.head.reference.name
++
++    @property
++    def is_dirty(self) -> bool:
++        return self.repo.is_dirty()
++
++
+ def get_repo_name(repo: Repo | None = None) -> str:
+     repo = repo or get_repo()
+
+@@ -98,10 +240,9 @@ def get_git_diff(repo: Repo | None = None) -> str:
+ def generate_commit_with_ai(
+     chat_provider: ChatProvider | None,
+     model: str | None,
+-    local_repo: Repo,
++    git: Git,
+ ) -> CommitGeneration:
+-    diff = get_git_diff(local_repo)
+-    commit_data = generate_commit_message(chat_provider, model, diff, local_repo.active_branch.name)
++    commit_data = generate_commit_message(chat_provider, model, git.get_diff(), git.current_branch)
+
+     if PREFERENCES.auto_accept_generated_commits:
+         return commit_data
+@@ -132,7 +273,7 @@ def generate_commit_with_ai(
+             raise typer.Exit(0)
+
+
+-def create_commit(local_repo: Repo, message: str, dry_run: bool = False, retry: int = 0) -> Commit:
++def create_commit(git: Git, message: str, dry_run: bool = False, retry: int = 0) -> Commit:
+     try:
+         local_repo.git.add(all=True)
+         commit = local_repo.index.commit(message)
+@@ -158,13 +299,13 @@ def push(local_repo: Repo) -> None:
+
+
+ def checkout_to_branch(
+-    local_repo: Repo,
++    git: Git,
+     main_branch: str,
+     commit_message: str | None,
+     chat_provider: ChatProvider | None = None,
+     model: str | None = None,
+ ) -> None:
+-    if local_repo.active_branch.name != main_branch:
++    if git.current_branch != main_branch:
+         return  # already checked out
+
+     if not chat_provider or not commit_message:
+@@ -174,4 +315,4 @@ def checkout_to_branch(
+         rich.print("[grey70]Checking out new branch...[/]")
+         branch_name = generate_branch_name(chat_provider, model, commit_message)
+
+-    local_repo.git.checkout("-b", branch_name)
++    git.checkout(branch_name)
+diff --git a/glu/models.py b/glu/models.py
+index c9a801a..2a6731f 100644
+--- a/glu/models.py
++++ b/glu/models.py
+@@ -25,6 +25,12 @@ class IdReference(BaseModel):
+     id: str
+
+
++@dataclass
++class JiraUser:
++    accountId: str
++    displayName: str
++
++
+ class CommitGeneration(BaseModel):
+     title: str
+     body: str
+diff --git a/pyproject.toml b/pyproject.toml
+index a1a8308..88fb8e9 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -27,6 +27,8 @@ dependencies = [
+ dev = [
+     "build>=1.2.2.post1",
+     "mypy>=1.15.0",
++    "pexpect>=4.9.0",
++    "pytest>=8.4.0",
+     "python-semantic-release>=10.0.2",
+     "ruff>=0.11.11",
+     "types-toml>=0.10.8.20240310",
+diff --git a/uv.lock b/uv.lock
+index 622437c..3397d01 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -450,7 +450,7 @@ name = "exceptiongroup"
+ version = "1.3.0"
+ source = { registry = "https://pypi.org/simple" }
+ dependencies = [
+-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
++    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+ ]
+ sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749 }
+ wheels = [
+@@ -599,7 +599,7 @@ wheels = [
+
+ [[package]]
+ name = "glu-cli"
+-version = "2.0.1"
++version = "2.0.2"
+ source = { editable = "." }
+ dependencies = [
+     { name = "gitpython" },
+@@ -624,6 +624,9 @@ dependencies = [
+ dev = [
+     { name = "build" },
+     { name = "mypy" },
++    { name = "pexpect" },
++    { name = "pytest" },
++    { name = "pytest-mock" },
+     { name = "python-semantic-release" },
+     { name = "ruff" },
+     { name = "types-toml" },
+@@ -653,6 +656,9 @@ requires-dist = [
+ dev = [
+     { name = "build", specifier = ">=1.2.2.post1" },
+     { name = "mypy", specifier = ">=1.15.0" },
++    { name = "pexpect", specifier = ">=4.9.0" },
++    { name = "pytest", specifier = ">=8.4.0" },
++    { name = "pytest-mock", specifier = ">=3.14.1" },
+     { name = "python-semantic-release", specifier = ">=10.0.2" },
+     { name = "ruff", specifier = ">=0.11.11" },
+     { name = "types-toml", specifier = ">=0.10.8.20240310" },
+@@ -834,7 +840,7 @@ name = "importlib-metadata"
+ version = "8.7.0"
+ source = { registry = "https://pypi.org/simple" }
+ dependencies = [
+-    { name = "zipp" },
++    { name = "zipp", marker = "python_full_version < '3.11'" },
+ ]
+ sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641 }
+ wheels = [
+@@ -850,6 +856,15 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/a4/ed/1f1afb2e9e7f38a545d628f864d562a5ae64fe6f7a10e28ffb9b185b4e89/importlib_resources-6.5.2-py3-none-any.whl", hash = "sha256:789cfdc3ed28c78b67a06acb8126751ced69a3d5f79c095a98298cd8a760ccec", size = 37461 },
+ ]
+
++[[package]]
++name = "iniconfig"
++version = "2.1.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050 },
++]
++
+ [[package]]
+ name = "inquirerpy"
+ version = "0.3.4"
+@@ -1445,6 +1460,18 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/88/ef/eb23f262cca3c0c4eb7ab1933c3b1f03d021f2c48f54763065b6f0e321be/packaging-24.2-py3-none-any.whl", hash = "sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759", size = 65451 },
+ ]
+
++[[package]]
++name = "pexpect"
++version = "4.9.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "ptyprocess" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl", hash = "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523", size = 63772 },
++]
++
+ [[package]]
+ name = "pfzy"
+ version = "0.3.4"
+@@ -1531,6 +1558,15 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/21/2c/5e05f58658cf49b6667762cca03d6e7d85cededde2caf2ab37b81f80e574/pillow-11.2.1-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:208653868d5c9ecc2b327f9b9ef34e0e42a4cdd172c2988fd81d62d2bc9bc044", size = 2674751 },
+ ]
+
++[[package]]
++name = "pluggy"
++version = "1.6.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538 },
++]
++
+ [[package]]
+ name = "prompt-toolkit"
+ version = "3.0.51"
+@@ -1658,6 +1694,15 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/7e/cc/7e77861000a0691aeea8f4566e5d3aa716f2b1dece4a24439437e41d3d25/protobuf-5.29.5-py3-none-any.whl", hash = "sha256:6cf42630262c59b2d8de33954443d94b746c952b01434fc58a417fdbd2e84bd5", size = 172823 },
+ ]
+
++[[package]]
++name = "ptyprocess"
++version = "0.7.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/20/e5/16ff212c1e452235a90aeb09066144d0c5a6a8c0834397e03f5224495c4e/ptyprocess-0.7.0.tar.gz", hash = "sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220", size = 70762 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl", hash = "sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35", size = 13993 },
++]
++
+ [[package]]
+ name = "pyasn1"
+ version = "0.6.1"
+@@ -1859,6 +1904,36 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl", hash = "sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913", size = 10216 },
+ ]
+
++[[package]]
++name = "pytest"
++version = "8.4.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "colorama", marker = "sys_platform == 'win32'" },
++    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
++    { name = "iniconfig" },
++    { name = "packaging" },
++    { name = "pluggy" },
++    { name = "pygments" },
++    { name = "tomli", marker = "python_full_version < '3.11'" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/fb/aa/405082ce2749be5398045152251ac69c0f3578c7077efc53431303af97ce/pytest-8.4.0.tar.gz", hash = "sha256:14d920b48472ea0dbf68e45b96cd1ffda4705f33307dcc86c676c1b5104838a6", size = 1515232 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/2f/de/afa024cbe022b1b318a3d224125aa24939e99b4ff6f22e0ba639a2eaee47/pytest-8.4.0-py3-none-any.whl", hash = "sha256:f40f825768ad76c0977cbacdf1fd37c6f7a468e460ea6a0636078f8972d4517e", size = 363797 },
++]
++
++[[package]]
++name = "pytest-mock"
++version = "3.14.1"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "pytest" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/71/28/67172c96ba684058a4d24ffe144d64783d2a270d0af0d9e792737bddc75c/pytest_mock-3.14.1.tar.gz", hash = "sha256:159e9edac4c451ce77a5cdb9fc5d1100708d2dd4ba3c3df572f14097351af80e", size = 33241 }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/b2/05/77b60e520511c53d1c1ca75f1930c7dd8e971d0c4379b7f4b3f9644685ba/pytest_mock-3.14.1-py3-none-any.whl", hash = "sha256:178aefcd11307d874b4cd3100344e7e2d888d9791a6a1d9bfe90fbc1b74fd1d0", size = 9923 },
++]
++
+ [[package]]
+ name = "python-dotenv"
+ version = "1.1.0"

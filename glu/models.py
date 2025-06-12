@@ -25,6 +25,12 @@ class IdReference(BaseModel):
     id: str
 
 
+@dataclass
+class JiraUser:
+    accountId: str
+    displayName: str
+
+
 class CommitGeneration(BaseModel):
     title: str
     body: str

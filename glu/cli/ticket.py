@@ -4,19 +4,17 @@ import rich
 import typer
 from git import InvalidGitRepositoryError
 from InquirerPy import inquirer
-from jira import JIRA
 from typer import Context
 
-from glu.ai import prompt_for_chat_provider
-from glu.config import DEFAULT_JIRA_PROJECT, EMAIL, JIRA_API_TOKEN, JIRA_SERVER
+from glu.ai import get_ai_client, prompt_for_chat_provider
+from glu.config import DEFAULT_JIRA_PROJECT
 from glu.jira import (
-    create_ticket,
     generate_ticket_with_ai,
-    get_jira_issuetypes,
+    get_jira_client,
     get_jira_project,
     get_user_from_jira,
 )
-from glu.local import get_repo_name
+from glu.local import get_git_client
 from glu.utils import get_kwargs, prompt_or_edit
 
 app = typer.Typer()
@@ -69,10 +67,10 @@ def create(
 ):
     extra_fields: dict[str, Any] = get_kwargs(ctx)
 
-    jira = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
+    jira = get_jira_client()
 
     try:
-        repo_name = get_repo_name()
+        repo_name = get_git_client().repo_name
     except InvalidGitRepositoryError:
         repo_name = None
 
@@ -80,7 +78,7 @@ def create(
     if not project:
         project = get_jira_project(jira, repo_name)
 
-    types = get_jira_issuetypes(jira, project or "")
+    types = jira.get_issuetypes(project or "")
     if not type:
         issuetype = inquirer.select("Select type:", types).execute()
     else:
@@ -98,9 +96,11 @@ def create(
         # else:
         # prompt = ai_prompt
 
-        provider = prompt_for_chat_provider(provider, True)
+        chat_client = get_ai_client(model)
+        provider = prompt_for_chat_provider(chat_client, provider, True)
+        chat_client.set_chat_model(provider)
         ticket_data = generate_ticket_with_ai(
-            repo_name, provider, model, issuetype, ai_prompt=ai_prompt
+            chat_client, repo_name, issuetype, ai_prompt=ai_prompt
         )
         summary = ticket_data.summary
         body = ticket_data.description
@@ -114,15 +114,15 @@ def create(
         if not body:
             body = prompt_or_edit("Description", allow_skip=True)
 
-    reporter_ref = get_user_from_jira(jira, reporter)
+    reporter_ref = get_user_from_jira(jira, reporter, "reporter")
 
-    assignee_ref = get_user_from_jira(jira, assignee)
+    assignee_ref = get_user_from_jira(jira, assignee, "assignee")
 
     if priority:
         extra_fields["priority"] = priority
 
-    issue = create_ticket(
-        jira, project, issuetype, summary or "", body, reporter_ref, assignee_ref, **extra_fields
+    issue = jira.create_ticket(
+        project, issuetype, summary or "", body, reporter_ref, assignee_ref, **extra_fields
     )
 
     rich.print(f":page_with_curl: Created issue [bold red]{issue.key}[/]")
