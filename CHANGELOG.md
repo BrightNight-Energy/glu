@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v2.0.3 (2025-06-13)
+
+### Bug Fixes
+
+- Continue PR creation when ticket is skipped instead of returning early
+  ([#33](https://github.com/BrightNight-Energy/glu/pull/33),
+  [`7827f47`](https://github.com/BrightNight-Energy/glu/commit/7827f479ff9eafd75371b74154b8373e53f0e93f))
+
+### Refactoring
+
+- Add testing to commands ([#32](https://github.com/BrightNight-Energy/glu/pull/32),
+  [`175503e`](https://github.com/BrightNight-Energy/glu/commit/175503e731aa8aa23856d7c393aa62623a59ca31))
+
+
 ## v2.0.2 (2025-06-06)
 
 ### Bug Fixes
