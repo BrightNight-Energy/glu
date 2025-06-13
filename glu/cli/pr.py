@@ -186,7 +186,7 @@ def create(  # noqa: C901
             ticket = ticket_choice
             jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
         else:
-            return
+            pass
 
     if pr_description and ticket and jira_project:
         pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
