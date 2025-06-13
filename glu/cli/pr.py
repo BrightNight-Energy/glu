@@ -3,45 +3,30 @@ from typing import Annotated
 
 import rich
 import typer
-from git import Commit, GitCommandError, InvalidGitRepositoryError
-from github import Auth, Github, GithubException
+from git import Commit, InvalidGitRepositoryError
 from InquirerPy import inquirer
-from jira import JIRA, JIRAError
+from jira import JIRAError
 
 from glu.ai import (
-    generate_commit_message,
     generate_description,
-    generate_final_commit_message,
+    get_ai_client,
     prompt_for_chat_provider,
 )
 from glu.config import (
-    DEFAULT_JIRA_PROJECT,
-    EMAIL,
-    GITHUB_PAT,
-    JIRA_API_TOKEN,
     JIRA_IN_PROGRESS_TRANSITION,
     JIRA_READY_FOR_REVIEW_TRANSITION,
-    JIRA_SERVER,
 )
-from glu.gh import get_repo_name_from_repo_config, prompt_for_reviewers
+from glu.gh import get_github_client, prompt_for_reviewers
 from glu.jira import (
-    create_ticket,
     format_jira_ticket,
     generate_ticket_with_ai,
-    get_jira_issuetypes,
+    get_jira_client,
     get_jira_project,
     get_user_from_jira,
 )
 from glu.local import (
     checkout_to_branch,
-    create_commit,
-    get_first_commit_since_checkout,
-    get_git_diff,
-    get_repo,
-    get_repo_name,
-    prompt_commit_edit,
-    push,
-    remote_branch_in_sync,
+    get_git_client,
 )
 from glu.utils import (
     print_error,
@@ -88,20 +73,19 @@ def create(  # noqa: C901
     ] = None,
 ):
     try:
-        local_repo = get_repo()
-        repo_name = get_repo_name(local_repo)
+        git = get_git_client()
     except InvalidGitRepositoryError as err:
         print_error("Not valid a git repository")
         raise typer.Exit(1) from err
 
-    chat_provider = prompt_for_chat_provider(provider)
+    chat_client = get_ai_client(model)
+    chat_provider = prompt_for_chat_provider(chat_client, provider)
+    chat_client.set_chat_model(chat_provider)
 
-    auth = Auth.Token(GITHUB_PAT)
-    gh = Github(auth=auth)
-    repo = gh.get_repo(repo_name)
+    gh = get_github_client(git.repo_name)
 
     latest_commit: Commit | None = None
-    if local_repo.is_dirty():
+    if git.is_dirty:
         commit_choice = inquirer.select(
             "You have uncommitted changes.",
             [
@@ -112,56 +96,50 @@ def create(  # noqa: C901
         ).execute()
         match commit_choice:
             case "Commit and push with AI message":
+                git.create_commit("chore: [dry run commit]", dry_run=True)
                 rich.print("[grey70]Generating commit...[/]\n")
-                create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
-                diff = get_git_diff(local_repo)
+                diff = git.get_diff()
                 commit_data = prompt_commit_edit(
                     generate_commit_message(
                         chat_provider, model, diff, local_repo.active_branch.name
                     )
                 )
 
-                checkout_to_branch(
-                    local_repo, repo.default_branch, commit_data.message, chat_provider, model
-                )
-                latest_commit = create_commit(local_repo, commit_data.message)
-                push(local_repo)
+                checkout_to_branch(git, chat_client, gh.default_branch, commit_data.message)
+                latest_commit = git.create_commit(commit_data.message)
+                git.push()
             case "Commit and push with manual message":
-                create_commit(local_repo, "chore: [dry run commit]", dry_run=True)
+                git.create_commit("chore: [dry run commit]", dry_run=True)
                 commit_message = typer.edit("")
                 if not commit_message:
                     print_error("No commit message provided")
                     raise typer.Exit(0)
 
-                checkout_to_branch(
-                    local_repo, repo.default_branch, commit_message, chat_provider, model
-                )
-                latest_commit = create_commit(local_repo, commit_message)
-                push(local_repo)
+                checkout_to_branch(git, chat_client, gh.default_branch, commit_message)
+                latest_commit = git.create_commit(commit_message)
+                git.push()
             case "Proceed anyway":
-                checkout_to_branch(local_repo, repo.default_branch, commit_message=None)
+                checkout_to_branch(git, chat_client, gh.default_branch, commit_message=None)
             case _:
                 print_error("No matching choice for commit was provided")
                 raise typer.Exit(1)
 
-    try:
-        local_repo.remotes["origin"].fetch(local_repo.active_branch.name, prune=True)
-    except GitCommandError:
-        push(local_repo)
+    if not git.confirm_branch_exists_in_remote():
+        git.push()
 
-    if not remote_branch_in_sync(local_repo.active_branch.name, repo=local_repo):
+    if not git.remote_branch_in_sync():
         confirm_push = typer.confirm(
             "Local branch is not up to date with remote. Push to remote now?"
         )
         if confirm_push:
-            push(local_repo)
+            git.push()
 
-    jira = JIRA(JIRA_SERVER, basic_auth=(EMAIL, JIRA_API_TOKEN))
+    jira = get_jira_client()
 
-    first_commit = get_first_commit_since_checkout()
+    first_commit = git.get_first_commit_since_checkout()
     commit = latest_commit or first_commit
 
-    jira_project = get_jira_project(jira, repo_name, project) if ticket else ""
+    jira_project = get_jira_project(jira, git.repo_name, project) if ticket else ""
 
     title = (
         first_commit.summary.decode()
@@ -170,11 +148,13 @@ def create(  # noqa: C901
     )
     body = _create_pr_body(commit, jira_project, ticket)
 
-    selected_reviewers = prompt_for_reviewers(gh, reviewers, repo_name, draft)
+    selected_reviewers = prompt_for_reviewers(gh, reviewers, git.repo_name, draft)
 
+    pr_template = gh.get_contents(".github/pull_request_template.md")
+    diff_to_main = git.get_diff("main", gh.default_branch)
     rich.print("[grey70]Generating description...[/]")
     pr_description = generate_description(
-        repo, local_repo, body, chat_provider, model, jira_project
+        chat_client, pr_template, git.repo_name, diff_to_main, body, jira_project
     )
 
     if not ticket:
@@ -184,22 +164,20 @@ def create(  # noqa: C901
             show_default=False,
         )
         if ticket_choice.lower() == "g":
-            jira_project = jira_project or get_jira_project(jira, repo_name, project)
+            jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
             rich.print("[grey70]Generating ticket...[/]\n")
 
-            issuetypes = get_jira_issuetypes(jira, jira_project)
+            issuetypes = jira.get_issuetypes(jira_project)
             ticket_data = generate_ticket_with_ai(
-                repo_name,
-                chat_provider,
-                model,
+                chat_client,
+                git.repo_name,
                 issuetypes=issuetypes,
                 pr_description=pr_description,
             )
 
-            myself_ref = get_user_from_jira(jira, user_query=None)
+            myself_ref = get_user_from_jira(jira, user_query=None, user_type="reporter")
 
-            jira_issue = create_ticket(
-                jira,
+            jira_issue = jira.create_ticket(
                 jira_project,
                 ticket_data.issuetype,
                 ticket_data.summary,
@@ -210,32 +188,26 @@ def create(  # noqa: C901
             ticket = jira_issue.key.split("-")[1]
         elif ticket_choice.isdigit():
             ticket = ticket_choice
-            jira_project = jira_project or get_jira_project(jira, repo_name, project)
+            jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
         else:
             return
 
     if pr_description and ticket and jira_project:
         pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
 
-    pr = repo.create_pull(
-        repo.default_branch,
-        local_repo.active_branch.name,
+    pr = gh.create_pr(
+        git.current_branch,
         title=title,
         body=pr_description or body or "",
         draft=draft,
     )
-    pr.add_to_assignees(gh.get_user().login)
 
     if selected_reviewers:
-        for selected_reviewer in selected_reviewers:
-            try:
-                pr.create_review_request(selected_reviewer.login)
-            except GithubException as e:
-                print_error(f"Failed to add reviewer {selected_reviewer.login}: {e}")
+        gh.add_reviewers_to_pr(pr, selected_reviewers)
 
     rich.print(f"\n[grey70]{pr_description}[/]\n")
-    rich.print(f":rocket: Created PR in [blue]{repo_name}[/] with title [bold green]{title}[/]")
-    rich.print(f"[dark violet]https://github.com/{repo_name}/pull/{pr.number}[/]")
+    rich.print(f":rocket: Created PR in [blue]{git.repo_name}[/] with title [bold green]{title}[/]")
+    rich.print(f"[dark violet]https://github.com/{git.repo_name}/pull/{pr.number}[/]")
 
     if not ticket:
         return
@@ -243,11 +215,11 @@ def create(  # noqa: C901
     ticket_id = format_jira_ticket(jira_project, ticket or "")
 
     try:
-        transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
+        transitions = jira.get_transitions(ticket_id)
 
         if JIRA_IN_PROGRESS_TRANSITION in transitions:
             jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
-            transitions = [transition["name"] for transition in jira.transitions(ticket_id)]
+            transitions = jira.get_transitions(ticket_id)
 
         if not draft and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
             jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)

@@ -121,7 +121,7 @@ def init(
     cfg_path = config_path()
     rich.print(f"[grey70]Config file will be written to {cfg_path}[/]")
 
-    if cfg_path.exists():
+    if cfg_path.exists() and "your_github_pat" not in cfg_path.read_text():
         typer.confirm("Config file already exists. Overwrite?", default=False, abort=True)
 
     provider_configs = _setup_model_providers()
@@ -266,7 +266,7 @@ def _setup_repos(
 def _setup_jira_config(
     templates: dict[str, JiraIssueTemplateConfig] | None = None,
 ) -> dict[str, JiraIssueTemplateConfig]:
-    issuetype = typer.prompt("Issue type? (Generally, 'Bug', 'Story', 'Chore', etc")
+    issuetype = typer.prompt("Issue type? (Generally, 'Bug', 'Story', 'Chore', etc)")
     template = typer.edit("Description:\n{description}") or "Description:\n{description}"
 
     issuetemplate = {issuetype: JiraIssueTemplateConfig(issuetemplate=template)}

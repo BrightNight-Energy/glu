@@ -123,6 +123,11 @@ class Config(BaseModel):
 
 
 def config_path() -> Path:
+    if os.getenv("GLU_TEST"):
+        from tests import TESTS_DATA_DIR
+
+        return TESTS_DATA_DIR / "config.toml"
+
     base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
     return base / "glu" / "config.toml"
 
@@ -132,9 +137,9 @@ def ensure_config():
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        default_config = {"env": EnvConfig.defaults(), "repos": {}}
+        default_config = Config(env=EnvConfig.defaults())
 
-        path.write_text(toml.dumps(default_config), encoding="utf-8")
+        path.write_text(toml.dumps(default_config.model_dump()), encoding="utf-8")
 
 
 def get_config() -> Config:
