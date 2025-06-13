@@ -70,6 +70,9 @@ class GithubClient:
 
         return file.decoded_content.decode()
 
+    def get_pr(self, number: int) -> PullRequest:
+        return self._repo.get_pull(number)
+
     @property
     def default_branch(self) -> str:
         return self._repo.default_branch

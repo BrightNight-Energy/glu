@@ -8,15 +8,18 @@ from InquirerPy import inquirer
 from jira import JIRAError
 
 from glu.ai import (
+    generate_commit_message,
     generate_description,
+    generate_final_commit_message,
     get_ai_client,
     prompt_for_chat_provider,
 )
 from glu.config import (
+    DEFAULT_JIRA_PROJECT,
     JIRA_IN_PROGRESS_TRANSITION,
     JIRA_READY_FOR_REVIEW_TRANSITION,
 )
-from glu.gh import get_github_client, prompt_for_reviewers
+from glu.gh import get_github_client, get_repo_name_from_repo_config, prompt_for_reviewers
 from glu.jira import (
     format_jira_ticket,
     generate_ticket_with_ai,
@@ -27,6 +30,7 @@ from glu.jira import (
 from glu.local import (
     checkout_to_branch,
     get_git_client,
+    prompt_commit_edit,
 )
 from glu.utils import (
     print_error,
@@ -100,9 +104,7 @@ def create(  # noqa: C901
                 rich.print("[grey70]Generating commit...[/]\n")
                 diff = git.get_diff()
                 commit_data = prompt_commit_edit(
-                    generate_commit_message(
-                        chat_provider, model, diff, local_repo.active_branch.name
-                    )
+                    generate_commit_message(chat_client, diff, git.current_branch)
                 )
 
                 checkout_to_branch(git, chat_client, gh.default_branch, commit_data.message)
@@ -263,9 +265,6 @@ def merge(  # noqa: C901
         ),
     ] = None,
 ):
-    auth = Auth.Token(GITHUB_PAT)
-    gh = Github(auth=auth)
-
     if project:
         jira_project = project
     elif DEFAULT_JIRA_PROJECT:
@@ -281,8 +280,8 @@ def merge(  # noqa: C901
         repo_name = repo
     else:
         try:
-            local_repo = get_repo()
-            repo_name = get_repo_name(local_repo)
+            git = get_git_client()
+            repo_name = git.repo_name
         except InvalidGitRepositoryError:
             repo = get_repo_name_from_repo_config(jira_project)
             if not repo:
@@ -290,9 +289,9 @@ def merge(  # noqa: C901
             else:
                 repo_name = repo
 
-    gh_repo = gh.get_repo(repo_name)
+    gh = get_github_client(repo_name)
 
-    pr = gh_repo.get_pull(pr_num)
+    pr = gh.get_pr(pr_num)
     commits = pr.get_commits()
 
     all_commit_messages = [commit_ref.commit.message for commit_ref in commits]
@@ -305,7 +304,11 @@ def merge(  # noqa: C901
 
     match commit_choice:
         case "Commit with AI message":
-            chat_provider = prompt_for_chat_provider(provider, raise_if_no_api_key=True)
+            chat_client = get_ai_client(model)
+            chat_provider = prompt_for_chat_provider(
+                chat_client, provider, raise_if_no_api_key=True
+            )
+            chat_client.set_chat_model(chat_provider)
 
             if ticket:
                 if not ticket.isdigit():
@@ -330,8 +333,7 @@ def merge(  # noqa: C901
 
             commit_data = prompt_commit_edit(
                 generate_final_commit_message(
-                    chat_provider,
-                    model,
+                    chat_client,
                     summary_commit_message,
                     pr.body,
                 )

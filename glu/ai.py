@@ -341,49 +341,40 @@ def generate_branch_name(
 
 
 def generate_final_commit_message(
-    chat_provider: ChatProvider | None,
-    model: str | None,
+    chat_client: ChatClient,
     summary_commit_message: str,
     pr_description: str,
     error: str | None = None,
     retry: int = 0,
 ) -> CommitGeneration:
-    if not chat_provider:
-        print_error("Can't generate commit message with no API key")
-        raise typer.Exit(1)
-
     response_format = {
         "title": "{commit title}",
         "type": "{conventional commit type}",
         "body": "{commit body, bullet-pointed list}",
     }
 
-    prompt = HumanMessage(
-        content=f"""
-        {f"Previous error: {error}"}
+    prompt = f"""
+    {f"Previous error: {error}"}
 
-        Provide a commit message for merge into the repo.
-        Here's the commit messages of all previous commits:
-        {summary_commit_message}
+    Provide a commit message for merge into the repo.
+    Here's the commit messages of all previous commits:
+    {summary_commit_message}
 
-        Here's the PR description:
-        {pr_description}
+    Here's the PR description:
+    {pr_description}
 
-        The branch name sometimes gives a hint to the primary objective of the work,
-        use it to inform the commit title.
+    The branch name sometimes gives a hint to the primary objective of the work,
+    use it to inform the commit title.
 
-        Be concise in the body, using bullets to give a high level summary. Limit
-        to 5-10 bullets. Don't mention version bumps of the package itself or
-        testing changes unless testing is the primary purpose of the PR.
-        """
-    )
+    Be concise in the body, using bullets to give a high level summary. Limit
+    to 5-10 bullets. Don't mention version bumps of the package itself or
+    testing changes unless testing is the primary purpose of the PR.
+    """
 
-    chat = _get_chat_model(chat_provider, model)
-
-    response = chat.invoke([prompt])  # type: ignore
+    response = chat_client.run(prompt)
 
     try:
-        parsed = json.loads(remove_json_backticks(response.content))  # type: ignore
+        parsed = json.loads(remove_json_backticks(response))
         return CommitGeneration.model_validate(parsed)
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
@@ -398,7 +389,7 @@ def generate_final_commit_message(
             )
 
         return generate_final_commit_message(
-            chat_provider, model, summary_commit_message, pr_description, error, retry + 1
+            chat_client, summary_commit_message, pr_description, error, retry + 1
         )
 
 
