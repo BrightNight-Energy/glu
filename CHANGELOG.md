@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.0.4 (2025-06-14)
+
+### Bug Fixes
+
+- Detect and inject jira ticket placeholder in pr descriptions
+  ([`ad3843f`](https://github.com/BrightNight-Energy/glu/commit/ad3843f6142d3b3f785779238163fbe62ef8c635))
+
+
 ## v2.0.3 (2025-06-13)
 
 ### Bug Fixes
