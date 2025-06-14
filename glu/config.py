@@ -72,8 +72,9 @@ class EnvConfig(BaseModel):
     jira_server: str
     email: str
     jira_api_token: str
-    jira_in_progress_transition: str
-    jira_ready_for_review_transition: str
+    jira_in_progress_transition: str = "Starting"
+    jira_ready_for_review_transition: str = "Ready for review"
+    jira_done_transition: str = "Finished"
     default_jira_project: str | None = None
     github_pat: str
     openai_config: OpenAIConfig | None = None
@@ -89,8 +90,6 @@ class EnvConfig(BaseModel):
             jira_server="https://jira.atlassian.com",
             email="your_jira_email",
             jira_api_token="your_jira_api_token",
-            jira_in_progress_transition="Starting",
-            jira_ready_for_review_transition="Ready for review",
             github_pat="your_github_pat",
         )
 
@@ -165,6 +164,7 @@ EMAIL = config.env.email
 JIRA_API_TOKEN = config.env.jira_api_token
 JIRA_IN_PROGRESS_TRANSITION = config.env.jira_in_progress_transition
 JIRA_READY_FOR_REVIEW_TRANSITION = config.env.jira_ready_for_review_transition
+JIRA_DONE_TRANSITION = config.env.jira_done_transition
 DEFAULT_JIRA_PROJECT = config.env.default_jira_project
 
 # github

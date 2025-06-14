@@ -1,0 +1,6 @@
+[
+  "fix:  fix ticket not being properly added to pr descriptions\\n\\n- Add regex detection for Jira ticket placeholders in PR templates\\n- Extend generate_description with error and retry parameters for recursive prompts\\n- Inject placeholder prompt into the chat API prompt when template contains ticket markers\\n- Retry up to 3 times if the generated description omits the required placeholder\\n- Update CLI to drop jira_project arg and print the generated description",
+  "cleanup",
+  "few adjustments",
+  "remove rich print"
+]

@@ -106,6 +106,14 @@ def init(
             rich_help_panel="Jira Config",
         ),
     ] = DEFAULTS.jira_ready_for_review_transition,
+    jira_done: Annotated[
+        str,
+        typer.Option(
+            help="Jira 'done' transition name",
+            prompt="Jira 'done' transition name",
+            rich_help_panel="Jira Config",
+        ),
+    ] = DEFAULTS.jira_done_transition,
     default_jira_project: Annotated[
         str | None,
         typer.Option(
@@ -134,6 +142,7 @@ def init(
             "jira_api_token": jira_api_token,
             "jira_in_progress_transition": jira_in_progress,
             "jira_ready_for_review_transition": jira_ready_for_review,
+            "jira_done_transition": jira_done,
             "default_jira_project": default_jira_project or None,
             "github_pat": github_pat,
         }

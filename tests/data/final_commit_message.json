@@ -1,0 +1,5 @@
+{
+  "title": "fix: Detect and inject jira ticket placeholder in pr descriptions",
+  "type": "fix",
+  "body": "- Introduce TICKET_PLACEHOLDER constant and regex detection of Jira-style markers in PR templates\n- Post-process AI-generated descriptions to inject the placeholder\n- Remove unused jira_project parameter and related substitution logic\n- Simplify ticket key helper to swap placeholder with the actual Jira key\n- Update CLI to drop jira_project arg and print the generated description"
+}
