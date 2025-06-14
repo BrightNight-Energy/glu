@@ -1,6 +1,6 @@
 ### Description
 
-- **Jira Ticket**: [TEST-XXXXX]
+- **Jira Ticket**: [GLU-XXXX]
 - **Summary**: Introduce unified client abstractions for AI, GitHub, Jira, and local Git operations; refactor all CLI
 commands and generators to use these clients; add end-to-end pexpect tests.
 - **Implementation details**:

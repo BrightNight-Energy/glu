@@ -8,6 +8,10 @@ on:
 env:
   PYTHON_VERSION: '3.13'
 
+concurrency:
+  group: ${{ github.event.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     name: Run tests
