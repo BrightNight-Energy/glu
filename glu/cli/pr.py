@@ -4,6 +4,7 @@ from typing import Annotated
 import rich
 import typer
 from git import Commit, InvalidGitRepositoryError
+from github import GithubException
 from InquirerPy import inquirer
 from jira import JIRAError
 
@@ -19,7 +20,13 @@ from glu.config import (
     JIRA_IN_PROGRESS_TRANSITION,
     JIRA_READY_FOR_REVIEW_TRANSITION,
 )
-from glu.gh import get_github_client, get_repo_name_from_repo_config, prompt_for_reviewers
+from glu.gh import (
+    get_all_from_paginated_list,
+    get_github_client,
+    get_pr_approval_status,
+    get_repo_name_from_repo_config,
+    prompt_for_reviewers,
+)
 from glu.jira import (
     format_jira_ticket,
     generate_ticket_with_ai,
@@ -233,11 +240,7 @@ def create(  # noqa: C901
 
 @app.command(short_help="Merge a PR")
 def merge(  # noqa: C901
-    pr_num: Annotated[int, typer.Option("--pr", help="PR number")],
-    repo: Annotated[
-        str | None,
-        typer.Option("--repo", "-r", help="Github repo", show_default=False),
-    ] = None,
+    pr_num: Annotated[int, typer.Argument(help="PR number")],
     ticket: Annotated[
         str | None,
         typer.Option("--ticket", "-t", help="Jira ticket number", show_default=False),
@@ -265,69 +268,105 @@ def merge(  # noqa: C901
         ),
     ] = None,
 ):
-    if project:
-        jira_project = project
-    elif DEFAULT_JIRA_PROJECT:
-        project_confirmation = typer.confirm(f"Confirm project is {DEFAULT_JIRA_PROJECT}?")
-        if project_confirmation:
-            jira_project = DEFAULT_JIRA_PROJECT
+    try:
+        git = get_git_client()
+        repo_name = git.repo_name
+    except InvalidGitRepositoryError:
+        repo_name = ""
+
+    jira = get_jira_client()
+    jira_project = get_jira_project(jira, repo_name, project) if repo_name else ""
+
+    if not jira_project:
+        if project:
+            jira_project = project
+        elif DEFAULT_JIRA_PROJECT:
+            project_confirmation = typer.confirm(f"Confirm project is {DEFAULT_JIRA_PROJECT}?")
+            if project_confirmation:
+                jira_project = DEFAULT_JIRA_PROJECT
+            else:
+                jira_project = typer.prompt("Enter Jira project name")
         else:
             jira_project = typer.prompt("Enter Jira project name")
-    else:
-        jira_project = typer.prompt("Enter Jira project name")
 
-    if repo:
-        repo_name = repo
-    else:
-        try:
-            git = get_git_client()
-            repo_name = git.repo_name
-        except InvalidGitRepositoryError:
-            repo = get_repo_name_from_repo_config(jira_project)
-            if not repo:
-                repo_name = f"{typer.prompt('Enter org name')}/{typer.prompt('Enter repo name')}"
-            else:
-                repo_name = repo
+    if not repo_name:
+        repo = get_repo_name_from_repo_config(jira_project)
+        if not repo:
+            repo_name = f"{typer.prompt('Enter org name')}/{typer.prompt('Enter repo name')}"
+        else:
+            repo_name = repo
 
     gh = get_github_client(repo_name)
 
     pr = gh.get_pr(pr_num)
-    commits = pr.get_commits()
+
+    if pr.draft:
+        ready_for_review_confirm = typer.confirm(
+            "This PR is in draft mode. Would you like to mark it ready for review?"
+        )
+        if ready_for_review_confirm:
+            pr.mark_ready_for_review()
+        raise typer.Exit(0)
+
+    if pr.merged:
+        rich.print(f"PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/] is already merged")
+        raise typer.Exit(0)
+
+    if not pr.mergeable:
+        message = f"PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/] is not mergeable"
+        if pr.mergeable_state == "dirty":
+            message += " [red]due to conflicts[/]"
+        else:
+            message += f" [red]({pr.mergeable_state})[/]"
+        rich.print(message)
+        raise typer.Exit(1)
+
+    pr_approval_status = get_pr_approval_status(pr.get_reviews())
+    if pr_approval_status == "changes_requested":
+        rich.print(f"PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/] has changes requested")
+        raise typer.Exit(1)
+    elif pr_approval_status != "approved":
+        rich.print(f"PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/] is [red]not approved[/].")
+        typer.confirm("Would you like to try to continue anyway?", abort=True)
+
+    commits = get_all_from_paginated_list(pr.get_commits())
 
     all_commit_messages = [commit_ref.commit.message for commit_ref in commits]
-    summary_commit_message = "\n\n".join(f"* {msg}" for msg in all_commit_messages)
+    summary_commit_message = f"{all_commit_messages[0]}\n\n" + "\n\n".join(
+        f"* {msg}" for msg in all_commit_messages[1:]
+    )
+
+    if ticket:
+        if not ticket.isdigit():
+            ticket = typer.prompt("Enter ticket number")
+            if not ticket:
+                print_error("No ticket number provided")
+                raise typer.Exit(1)
+        formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
+    else:
+        text = f"{summary_commit_message}\n{pr.body}"
+        jira_matched = _search_jira_key_in_text(text, jira_project)
+        if jira_matched:
+            formatted_ticket = text[jira_matched.start() : jira_matched.end()]
+        else:
+            ticket = typer.prompt("Enter ticket number")
+            if not ticket:
+                print_error("No ticket number provided")
+                raise typer.Exit(1)
+            formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
 
     commit_choice = inquirer.select(
-        "You have uncommitted changes.",
-        ["Commit with AI message", "Create manual message"],
+        "Create commit message.",
+        ["Create with AI", "Create manually"],
     ).execute()
 
     match commit_choice:
-        case "Commit with AI message":
+        case "Create with AI":
             chat_client = get_ai_client(model)
             chat_provider = prompt_for_chat_provider(
                 chat_client, provider, raise_if_no_api_key=True
             )
             chat_client.set_chat_model(chat_provider)
-
-            if ticket:
-                if not ticket.isdigit():
-                    ticket = typer.prompt("Enter ticket number")
-                    if not ticket:
-                        print_error("No ticket number provided")
-                        raise typer.Exit(1)
-                formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
-            else:
-                text = f"{summary_commit_message}\n{pr.body}"
-                jira_matched = _search_jira_key_in_text(text, jira_project)
-                if jira_matched:
-                    formatted_ticket = text[jira_matched.pos : jira_matched.endpos]
-                else:
-                    ticket = typer.prompt("Enter ticket number")
-                    if not ticket:
-                        print_error("No ticket number provided")
-                        raise typer.Exit(1)
-                    formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
 
             rich.print("[grey70]Generating commit...[/]\n")
 
@@ -335,23 +374,31 @@ def merge(  # noqa: C901
                 generate_final_commit_message(
                     chat_client,
                     summary_commit_message,
-                    pr.body,
+                    formatted_ticket,
+                    pr_description=f"{pr.title}\n\n{pr.body}",
                 )
             )
             commit_body = f"{commit_data.body}\n\n{formatted_ticket}"
             commit_title = commit_data.full_title
-        case "Create manual message":
+        case "Create manually":
             commit_msg = typer.edit(summary_commit_message)
             if not commit_msg:
                 print_error("No commit message provided")
                 raise typer.Exit(0)
             commit_title = commit_msg.split("\n\n")[0]
-            commit_body = commit_msg.split("\n\n")[1]
+            body = commit_msg.replace(f"{commit_title}\n\n", "", 1).strip()
+            commit_body = f"{body}\n\n{formatted_ticket}" if formatted_ticket not in body else body
         case _:
             print_error("No matching choice for commit was provided")
             raise typer.Exit(1)
 
-    pr.merge(commit_body, commit_title, merge_method="squash")
+    rich.print("[grey70]Merging PR...[/]\n")
+    try:
+        pr.merge(commit_body, commit_title, merge_method="squash", delete_branch=True)
+    except GithubException as err:
+        print_error(str(err))
+        raise typer.Exit(1) from err
+
     rich.print(f":rocket: Merged PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/]")
 
 

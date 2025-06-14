@@ -35,6 +35,7 @@ class CommitGeneration(BaseModel):
     title: str
     body: str
     type: str
+    formatted_ticket: str | None = None
 
     @model_validator(mode="after")
     def validate_title(self) -> "CommitGeneration":
@@ -50,4 +51,7 @@ class CommitGeneration(BaseModel):
 
     @property
     def message(self):
-        return f"{self.full_title}\n\n{self.body}"
+        message = f"{self.full_title}\n\n{self.body}"
+        if self.formatted_ticket:
+            message += f"\n\n{self.formatted_ticket}"
+        return message

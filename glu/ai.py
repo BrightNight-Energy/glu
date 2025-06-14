@@ -343,6 +343,7 @@ def generate_branch_name(
 def generate_final_commit_message(
     chat_client: ChatClient,
     summary_commit_message: str,
+    formatted_ticket: str,
     pr_description: str,
     error: str | None = None,
     retry: int = 0,
@@ -375,7 +376,7 @@ def generate_final_commit_message(
 
     try:
         parsed = json.loads(remove_json_backticks(response))
-        return CommitGeneration.model_validate(parsed)
+        return CommitGeneration.model_validate(parsed | {"formatted_ticket": formatted_ticket})
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
             error = (
@@ -389,7 +390,7 @@ def generate_final_commit_message(
             )
 
         return generate_final_commit_message(
-            chat_client, summary_commit_message, pr_description, error, retry + 1
+            chat_client, summary_commit_message, formatted_ticket, pr_description, error, retry + 1
         )
 
 

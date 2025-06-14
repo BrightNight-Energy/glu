@@ -1,4 +1,4 @@
-# ruff: noqa: ARG002, E501
+# ruff: noqa: ARG002, E501, C901
 import json
 import os
 import random
@@ -9,9 +9,12 @@ import pytest
 import toml
 from git import Commit, HookExecutionError
 from github.NamedUser import NamedUser
+from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
+from github.PullRequestReview import PullRequestReview
 from jira import Issue, Project
 from langchain_core.language_models import BaseChatModel
+from pydantic import BaseModel, TypeAdapter
 
 from glu import ROOT_DIR
 from glu.config import JIRA_SERVER, Config, EnvConfig, RepoConfig
@@ -178,6 +181,92 @@ class FakeGithubClient:
 
         return None
 
+    def get_pr(self, number: int) -> PullRequest:
+        class FakePullRequest(BaseModel):
+            number: int
+            title: str
+            body: str | None
+            changed_files: int
+            id: int
+            mergeable: bool
+            mergeable_state: str
+            merged: bool
+            updated_at: str
+            state: str
+            draft: bool
+
+            def get_commits(self) -> list[Commit]:
+                class FakeCommit(BaseModel):
+                    message: str
+
+                class FakeCommitRef(BaseModel):
+                    commit: FakeCommit
+
+                @dataclass
+                class PaginatedList:
+                    totalCount: int
+
+                    def get_page(self, page: int) -> list[PullRequestReview]:
+                        if page > 0:
+                            return []
+
+                        prev_commits = load_json("previous_commit_messages.json")
+                        commits = [{"commit": {"message": message}} for message in prev_commits]
+
+                        return TypeAdapter(list[FakeCommitRef]).validate_python(commits)  # type: ignore
+
+                return PaginatedList(4)  # type: ignore
+
+            def merge(
+                self, commit_message: str, commit_title: str, merge_method: str, delete_branch: bool
+            ) -> None:
+                pass
+
+            def get_reviews(self) -> PaginatedList[PullRequestReview]:
+                class NamedUser(BaseModel):
+                    login: str
+
+                class PRReview(BaseModel):
+                    id: int
+                    body: str | None
+                    state: str
+                    user: NamedUser
+
+                @dataclass
+                class PaginatedList:
+                    totalCount: int
+
+                    def get_page(self, page: int) -> list[PullRequestReview]:
+                        if page > 0:
+                            return []
+
+                        pr_reviews = load_json("pr_reviews.json")
+                        if os.getenv("IS_PR_NOT_APPROVED"):
+                            pr_reviews.pop(-1)
+                        if os.getenv("PR_CHANGES_REQUESTED"):
+                            pr_reviews[1]["state"] = "CHANGES_REQUESTED"
+                            pr_reviews[1]["body"] = "meh /:"
+
+                        return TypeAdapter(list[PRReview]).validate_python(pr_reviews)  # type: ignore
+
+                return PaginatedList(2)  # type: ignore
+
+            def mark_ready_for_review(self):
+                pass
+
+        pr_data = load_json("pr_data.json")
+        if os.getenv("PR_NOT_MERGEABLE"):
+            pr_data["mergeable"] = False
+            pr_data["mergeable_state"] = "dirty"
+
+        if os.getenv("IS_PR_MERGED"):
+            pr_data["merged"] = True
+
+        if os.getenv("IS_DRAFT_PR"):
+            pr_data["draft"] = True
+
+        return FakePullRequest.model_validate(pr_data)  # type: ignore
+
     @property
     def default_branch(self) -> str:
         return "main"
@@ -204,6 +293,8 @@ class FakeChatClient:
         if "Provide a description for the PR diff below." in msg:
             with open(TESTS_DATA_DIR / "pr_description.txt", "r") as f:
                 return f.read()
+        if "Provide a commit message for merge into the repo." in msg:
+            return json.dumps(load_json("final_commit_message.json"))
         raise NotImplementedError("AI test message not implemented")
 
     def set_chat_model(self, provider: ChatProvider | None) -> None:
