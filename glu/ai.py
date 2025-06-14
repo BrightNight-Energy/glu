@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from json import JSONDecodeError
 
 import rich
@@ -20,7 +21,7 @@ from glu.config import (
     PREFERENCES,
     REPO_CONFIGS,
 )
-from glu.models import ChatProvider, CommitGeneration, TicketGeneration
+from glu.models import TICKET_PLACEHOLDER, ChatProvider, CommitGeneration, TicketGeneration
 from glu.utils import print_error, remove_json_backticks
 
 
@@ -118,23 +119,35 @@ def generate_description(
     repo_name: str,
     diff: str,
     body: str | None,
-    jira_project: str | None,
+    error: str | None = None,
+    retry: int = 0,
 ) -> str | None:
+    if retry > 2:
+        print_error(f"Failed to generate description after {retry} attempts")
+        raise typer.Exit(1)
+
     template_dir = ".github/pull_request_template.md"
     if not template:
         if REPO_CONFIGS.get(repo_name) and REPO_CONFIGS[repo_name].pr_template:
-            template = REPO_CONFIGS[repo_name].pr_template
+            template_text: str = REPO_CONFIGS[repo_name].pr_template  # type: ignore
         else:
             with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
-                template = f.read()
-            if jira_project:
-                template = template.replace("GLU", jira_project)
+                template_text = f.read()
+    else:
+        template_text = template
+
+    ticket_placeholder_pattern = r"\[[A-Z]{2,}-[A-Z0-9]+]"
+    ticket_placeholder_match = re.search(ticket_placeholder_pattern, template_text)
 
     prompt = f"""
+    {f"Previous error: {error}" if error else ""}
+
     Provide a description for the PR diff below.
 
     Be concise and informative about the contents of the PR, relevant to someone
-    reviewing the PR. Write the description the following format:
+    reviewing the PR. Don't describe changes to testing, unless testing is the main
+    purpose for the PR. Leave any Jira ticket placeholder as it was in the template.
+    Write the description using the following template:
     {template}
 
     PR body:
@@ -143,7 +156,23 @@ def generate_description(
     {diff}
     """
 
-    return chat_client.run(prompt)
+    response = chat_client.run(prompt)
+
+    if ticket_placeholder_match:
+        template_placeholder = template_text[
+            ticket_placeholder_match.start() : ticket_placeholder_match.end()
+        ]
+        if template_placeholder not in response:
+            error = (
+                f"The ticket placeholder '{template_placeholder}' was not found in the response."
+            )
+            return generate_description(
+                chat_client, template, repo_name, diff, body, error, retry + 1
+            )
+
+        return re.sub(ticket_placeholder_pattern, TICKET_PLACEHOLDER, response)
+
+    return response
 
 
 def generate_ticket(

@@ -80,7 +80,11 @@ class FakeGitClient:
     def get_first_commit_since_checkout(self) -> Commit:
         @dataclass
         class FakeCommit:
-            summary: str
+            message: str
+
+            @property
+            def summary(self) -> str:
+                return self.message.split("\n")[0]
 
         return FakeCommit("feat: Add testing to my CLI app")  # type: ignore
 

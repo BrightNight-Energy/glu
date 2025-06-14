@@ -1,4 +1,3 @@
-import re
 from typing import Annotated
 
 import rich
@@ -39,6 +38,7 @@ from glu.local import (
     get_git_client,
     prompt_commit_edit,
 )
+from glu.models import TICKET_PLACEHOLDER
 from glu.utils import (
     print_error,
 )
@@ -163,7 +163,7 @@ def create(  # noqa: C901
     diff_to_main = git.get_diff("main", gh.default_branch)
     rich.print("[grey70]Generating description...[/]")
     pr_description = generate_description(
-        chat_client, pr_template, git.repo_name, diff_to_main, body, jira_project
+        chat_client, pr_template, git.repo_name, diff_to_main, body
     )
 
     if not ticket:
@@ -199,7 +199,7 @@ def create(  # noqa: C901
             ticket = ticket_choice
             jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
         else:
-            return
+            pass
 
     if pr_description and ticket and jira_project:
         pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
@@ -447,8 +447,7 @@ def _search_jira_key_in_text(text: str, jira_project: str) -> re.Match[str] | No
 
 def _add_jira_key_to_description(text: str, jira_project: str, jira_key: str | int) -> str:
     """
-    Search for any substring matching [{jira_project}-NUMBERS/LETTERS] (e.g. [ABC-XX1234]
-    or ABC-XX1234) and replace each occurrence with the formatted Jira key.
+    Replace the placeholder Jira ticket with the formatted Jira key.
 
     Args:
         text: The input string to search.
@@ -457,13 +456,13 @@ def _add_jira_key_to_description(text: str, jira_project: str, jira_key: str | i
     Returns:
         A new string with all [LETTERS-NUMBERS] patterns replaced.
     """
-    pattern = rf"\[?{jira_project}-[A-Za-z0-9]+\]?"
+
     formatted_key = format_jira_ticket(jira_project, jira_key, with_brackets=True)
 
     if formatted_key in text:
         return text  # already present
 
-    if re.search(pattern, text) is not None:
-        return re.sub(pattern, formatted_key, text)
+    if TICKET_PLACEHOLDER in text:
+        return text.replace(TICKET_PLACEHOLDER, formatted_key)
 
-    return f"{text}\n\n{jira_key}"
+    return f"{text}\n\n{formatted_key}"
