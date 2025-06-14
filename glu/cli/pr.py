@@ -153,8 +153,6 @@ def create(  # noqa: C901
         chat_client, pr_template, git.repo_name, diff_to_main, body
     )
 
-    rich.print(pr_description)
-
     if not ticket:
         ticket_choice = typer.prompt(
             "Ticket [enter #, enter (g) to generate, or Enter to skip]",
