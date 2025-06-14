@@ -8,6 +8,8 @@ ChatProvider = Literal["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"
 
 CHAT_PROVIDERS: list[ChatProvider] = ["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"]
 
+TICKET_PLACEHOLDER = "[XY-1234]"
+
 
 @dataclass
 class MatchedUser:

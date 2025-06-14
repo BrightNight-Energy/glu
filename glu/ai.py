@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from json import JSONDecodeError
 
 import rich
@@ -20,7 +21,7 @@ from glu.config import (
     PREFERENCES,
     REPO_CONFIGS,
 )
-from glu.models import ChatProvider, CommitGeneration, TicketGeneration
+from glu.models import TICKET_PLACEHOLDER, ChatProvider, CommitGeneration, TicketGeneration
 from glu.utils import print_error, remove_json_backticks
 
 
@@ -118,7 +119,6 @@ def generate_description(
     repo_name: str,
     diff: str,
     body: str | None,
-    jira_project: str | None,
 ) -> str | None:
     template_dir = ".github/pull_request_template.md"
     if not template:
@@ -127,14 +127,16 @@ def generate_description(
         else:
             with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
                 template = f.read()
-            if jira_project:
-                template = template.replace("GLU", jira_project)
+
+    ticket_placeholder_pattern = r"\[[A-Z]{2,}-[A-Z0-9]+]"
+    has_ticket_placeholder = bool(re.search(ticket_placeholder_pattern, template or ""))
 
     prompt = f"""
     Provide a description for the PR diff below.
 
     Be concise and informative about the contents of the PR, relevant to someone
-    reviewing the PR. Write the description the following format:
+    reviewing the PR. Don't describe changes to testing, unless testing is the main
+    purpose for the PR. Write the description in the following format:
     {template}
 
     PR body:
@@ -143,7 +145,12 @@ def generate_description(
     {diff}
     """
 
-    return chat_client.run(prompt)
+    response = chat_client.run(prompt)
+
+    if has_ticket_placeholder:
+        return re.sub(ticket_placeholder_pattern, TICKET_PLACEHOLDER, response)
+
+    return response
 
 
 def generate_ticket(
