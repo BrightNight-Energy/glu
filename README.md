@@ -65,6 +65,7 @@ Options:
 - `--reviewer, -r TEXT`        Requested reviewers (repeatable)  
 - `--provider, -pr TEXT`       AI model provider  
 - `--model, -m TEXT`           LLM model  
+- `--review`                   Move ticket to ready for review (defaults to False)  
 
 #### `pr merge`
 
@@ -80,6 +81,7 @@ Options:
 - `--project, -p TEXT`         Jira project (defaults to default project)  
 - `--provider, -pr TEXT`       AI model provider  
 - `--model, -m TEXT`           LLM model  
+- `--mark-done`                Move Jira ticket to done (defaults to False)  
 
 #### `ticket create`
 

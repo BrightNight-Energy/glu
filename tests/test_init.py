@@ -27,6 +27,8 @@ def test_init(env_cli):
     child.send(Key.ENTER.value)  # accept default
     child.expect("Jira 'ready for review' transition name")
     child.send(Key.ENTER.value)  # accept default
+    child.expect("Jira 'done' transition name")
+    child.send(Key.ENTER.value)  # accept default
 
     child.expect("Exit")
 

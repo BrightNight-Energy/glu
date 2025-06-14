@@ -1,3 +1,4 @@
+import re
 from typing import Annotated
 
 import rich
@@ -16,6 +17,7 @@ from glu.ai import (
 )
 from glu.config import (
     DEFAULT_JIRA_PROJECT,
+    JIRA_DONE_TRANSITION,
     JIRA_IN_PROGRESS_TRANSITION,
     JIRA_READY_FOR_REVIEW_TRANSITION,
 )
@@ -82,6 +84,13 @@ def create(  # noqa: C901
             help="AI model",
         ),
     ] = None,
+    ready_for_review: Annotated[
+        bool,
+        typer.Option(
+            "--review",
+            help="Move ticket to ready for review",
+        ),
+    ] = False,
 ):
     try:
         git = get_git_client()
@@ -230,9 +239,9 @@ def create(  # noqa: C901
             jira.transition_issue(ticket_id, JIRA_IN_PROGRESS_TRANSITION)
             transitions = jira.get_transitions(ticket_id)
 
-        if not draft and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
+        if ready_for_review and not draft and JIRA_READY_FOR_REVIEW_TRANSITION in transitions:
             jira.transition_issue(ticket_id, JIRA_READY_FOR_REVIEW_TRANSITION)
-            rich.print(f":eyes: Moved issue [blue]{ticket_id}[/] to [green]Ready for review[/]")
+            rich.print(f":eyes: Moved ticket [blue]{ticket_id}[/] to [green]Ready for review[/]")
     except JIRAError as err:
         rich.print(err)
         raise typer.Exit(1) from err
@@ -267,6 +276,13 @@ def merge(  # noqa: C901
             show_default=False,
         ),
     ] = None,
+    mark_as_done: Annotated[
+        bool,
+        typer.Option(
+            "--mark-done",
+            help="Move Jira ticket to done",
+        ),
+    ] = False,
 ):
     try:
         git = get_git_client()
@@ -400,6 +416,20 @@ def merge(  # noqa: C901
         raise typer.Exit(1) from err
 
     rich.print(f":rocket: Merged PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/]")
+
+    if mark_as_done:
+        ticket_id = formatted_ticket[1:-1]  # remove brackets
+        try:
+            transitions = jira.get_transitions(ticket_id)
+
+            if JIRA_DONE_TRANSITION in transitions:
+                jira.transition_issue(ticket_id, JIRA_DONE_TRANSITION)
+                rich.print(
+                    f":white_check_mark: Marked ticket [blue]{ticket_id}[/] as [green]Done[/]"
+                )
+        except JIRAError as err:
+            rich.print(err)
+            raise typer.Exit(1) from err
 
 
 def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | None:
