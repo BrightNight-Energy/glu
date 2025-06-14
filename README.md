@@ -68,7 +68,7 @@ Options:
 
 #### `pr merge`
 
-Merge a PR with an AI generated commit message (or handcrafted, your choice), with your Jira ticket number.
+Merge a PR with an AI generated commit message (or handcrafted, your choice) and your Jira ticket number.
 
 Arguments:
 
