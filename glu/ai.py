@@ -157,7 +157,7 @@ def generate_description(
     """
 
     response = chat_client.run(prompt)
-    rich.print("match", ticket_placeholder_match)
+
     if ticket_placeholder_match:
         template_placeholder = template_text[
             ticket_placeholder_match.start() : ticket_placeholder_match.end()
