@@ -1,10 +1,9 @@
-from typing import Annotated, Any
+from typing import Any
 
 import rich
 import typer
 from git import InvalidGitRepositoryError
 from InquirerPy import inquirer
-from typer import Context
 
 from glu.ai import get_ai_client, prompt_for_chat_provider
 from glu.config import DEFAULT_JIRA_PROJECT
@@ -15,58 +14,23 @@ from glu.jira import (
     get_user_from_jira,
 )
 from glu.local import get_git_client
-from glu.utils import get_kwargs, prompt_or_edit
-
-app = typer.Typer()
+from glu.utils import prompt_or_edit, suppress_traceback
 
 
-@app.command(
-    short_help="Create a Jira ticket",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-)
-def create(
-    ctx: Context,
-    summary: Annotated[
-        str | None,
-        typer.Option(
-            "--summary",
-            "-s",
-            "--title",
-            help="Issue summary or title",
-        ),
-    ] = None,
-    type: Annotated[str | None, typer.Option("--type", "-t", help="Issue type")] = None,
-    body: Annotated[
-        str | None,
-        typer.Option("--body", "-b", help="Issue description"),
-    ] = None,
-    assignee: Annotated[str | None, typer.Option("--assignee", "-a", help="Assignee")] = None,
-    reporter: Annotated[str | None, typer.Option("--reporter", "-r", help="Reporter")] = None,
-    priority: Annotated[str | None, typer.Option("--priority", "-y", help="Priority")] = None,
-    project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
-    ai_prompt: Annotated[
-        str | None,
-        typer.Option("--ai-prompt", "-ai", help="AI prompt to generate summary and description"),
-    ] = None,
-    provider: Annotated[
-        str | None,
-        typer.Option(
-            "--provider",
-            "-pr",
-            help="AI model provider",
-        ),
-    ] = None,
-    model: Annotated[
-        str | None,
-        typer.Option(
-            "--model",
-            "-m",
-            help="AI model",
-        ),
-    ] = None,
+@suppress_traceback
+def create_ticket(
+    summary: str | None,
+    issue_type: str | None,
+    body: str | None,
+    assignee: str | None,
+    reporter: str | None,
+    priority: str | None,
+    project: str | None,
+    ai_prompt: str | None,
+    provider: str | None,
+    model: str | None,
+    **extra_fields: Any,
 ):
-    extra_fields: dict[str, Any] = get_kwargs(ctx)
-
     jira = get_jira_client()
 
     try:
@@ -79,13 +43,13 @@ def create(
         project = get_jira_project(jira, repo_name)
 
     types = jira.get_issuetypes(project or "")
-    if not type:
+    if not issue_type:
         issuetype = inquirer.select("Select type:", types).execute()
     else:
-        if type.title() not in types:
+        if issue_type.title() not in types:
             issuetype = inquirer.select("Select type:", types).execute()
         else:
-            issuetype = type
+            issuetype = issue_type
 
     if ai_prompt:
         # typer does not currently support union types

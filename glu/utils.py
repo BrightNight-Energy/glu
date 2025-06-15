@@ -1,3 +1,5 @@
+import os
+
 import rich
 import typer
 from prompt_toolkit import PromptSession
@@ -132,3 +134,17 @@ def prompt_or_edit(prompt: str, allow_skip: bool = False) -> str:
 
 def remove_json_backticks(text: str) -> str:
     return text.replace("```json", "").replace("```", "")
+
+
+def suppress_traceback(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as err:
+            if os.getenv("GLU_TEST"):
+                raise err
+
+            rich.print(f"[bold red]{type(err).__name__}: {err}[/]")
+            raise typer.Exit(1) from err
+
+    return wrapper
