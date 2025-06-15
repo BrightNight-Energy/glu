@@ -26,6 +26,7 @@ from glu.gh import (
     get_github_client,
     get_pr_approval_status,
     get_repo_name_from_repo_config,
+    print_status_checks,
     prompt_for_reviewers,
 )
 from glu.jira import (
@@ -344,6 +345,20 @@ def merge(  # noqa: C901
     elif pr_approval_status != "approved":
         rich.print(f"PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/] is [red]not approved[/].")
         typer.confirm("Would you like to try to continue anyway?", abort=True)
+
+    relevant_checks = []
+    bad_checks = 0
+    for check in gh.get_pr_checks(pr_num):
+        if check.conclusion == "skipped":
+            continue
+
+        relevant_checks.append(check)
+        if check.conclusion != "success":
+            bad_checks += 1
+
+    if bad_checks:
+        print_status_checks(relevant_checks)
+        typer.confirm("Not all status checks passed. Continue?", abort=True)
 
     commits = get_all_from_paginated_list(pr.get_commits())
 

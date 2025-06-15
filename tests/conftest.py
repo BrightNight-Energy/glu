@@ -1,4 +1,5 @@
 # ruff: noqa: ARG002, E501, C901
+import datetime as dt
 import json
 import os
 import random
@@ -8,6 +9,7 @@ from typing import Literal, overload
 import pytest
 import toml
 from git import Commit, HookExecutionError
+from github.CheckRun import CheckRun
 from github.NamedUser import NamedUser
 from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
@@ -270,6 +272,21 @@ class FakeGithubClient:
             pr_data["draft"] = True
 
         return FakePullRequest.model_validate(pr_data)  # type: ignore
+
+    def get_pr_checks(self, number: int) -> list[CheckRun]:
+        class FakeCheckRun(BaseModel):
+            id: int
+            status: str
+            completed: bool
+            conclusion: str
+            name: str
+            started_at: dt.datetime
+
+        checks = load_json("cicd_run_checks.json")
+        if os.getenv("IS_CICD_FAILING"):
+            checks[-1]["conclusion"] = "failure"
+
+        return TypeAdapter(list[FakeCheckRun]).validate_python(checks)  # type: ignore
 
     @property
     def default_branch(self) -> str:

@@ -150,3 +150,18 @@ def test_merge_pr_w_conflicts(env_cli, write_config_w_repo_config):
     child = pexpect.spawn("glu pr merge 263", env=env_cli, encoding="utf-8")
 
     child.expect("PR #263 in github/Test-Repo is not mergeable due to conflicts")
+
+
+def test_merge_pr_w_failing_cicd(env_cli, write_config_w_repo_config):
+    env_cli["IS_CICD_FAILING"] = "1"
+    child = pexpect.spawn("glu pr merge 263", env=env_cli, encoding="utf-8")
+
+    child.expect("Not all status checks passed. Continue?")
+
+    status_checks = get_terminal_text(child.before + child.after)
+
+    assert "✅  Validate PR title" in status_checks
+    assert "✅  Run tests (3.13)" in status_checks
+    assert "✅  Run tests (3.12)" in status_checks
+    assert "✅  Run tests (3.11)" in status_checks
+    assert "❌  Run tests (3.10)" in status_checks
