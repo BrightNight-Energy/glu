@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.1.0 (2025-06-15)
+
+### Features
+
+- Add ai-driven final commit message generation and pr merge command
+  ([`69118b5`](https://github.com/BrightNight-Energy/glu/commit/69118b5fdf8e0a0da35007dcc1c9b7761e05c787))
+
+
 ## v2.0.4 (2025-06-14)
 
 ### Bug Fixes
