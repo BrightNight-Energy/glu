@@ -64,7 +64,27 @@ Options:
 - `--ready-for-review/--no-ready-for-review`  Transition ticket to Ready for review  
 - `--reviewer, -r TEXT`        Requested reviewers (repeatable)  
 - `--provider, -pr TEXT`       AI model provider  
+- `--model, -m TEXT`           LLM model  
+- `--review`                   Move ticket to ready for review (defaults to False)  
 
+#### `pr merge`
+
+Merge a PR with an AI generated commit message (or handcrafted, your choice) and your Jira ticket number.
+
+Arguments:
+
+- `pr_num`                     PR number
+
+Options:
+
+- `--ticket, -t TEXT`          Jira ticket number  
+- `--project, -p TEXT`         Jira project (defaults to default project)  
+- `--provider, -pr TEXT`       AI model provider  
+- `--model, -m TEXT`           LLM model  
+- `--mark-done`                Move Jira ticket to done (defaults to False)  
+
+> [!WARNING]
+> Currently only squash-merges are supported
 
 #### `ticket create`
 
@@ -87,6 +107,7 @@ Options:
 - `--project, -p TEXT`               Jira project  
 - `--ai-prompt, -ai TEXT`            AI prompt to generate summary and description  
 - `--provider, -pr TEXT`             AI model provider  
+- `--model, -m TEXT`                 LLM model  
 
 The command also accepts additional JIRA fields via `--<field> <value>`.
 

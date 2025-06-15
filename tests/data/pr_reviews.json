@@ -1,0 +1,14 @@
+[
+  {
+    "id": 23423468,
+    "body": "just a couple comments",
+    "state": "COMMENTED",
+    "user": {"login": "lizzy"}
+  },
+  {
+    "id": 234235,
+    "body": "Looks good",
+    "state": "APPROVED",
+    "user": {"login": "teddy"}
+  }
+]

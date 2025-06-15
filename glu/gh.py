@@ -1,12 +1,19 @@
 import os
+from typing import Literal, TypeVar
 
+import rich
 import typer
 from github import Auth, Github, GithubException, UnknownObjectException
+from github.CheckRun import CheckRun
+from github.Commit import Commit
+from github.GithubObject import GithubObject
 from github.NamedUser import NamedUser
+from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
+from github.PullRequestReview import PullRequestReview
 from thefuzz import fuzz
 
-from glu.config import GITHUB_PAT
+from glu.config import GITHUB_PAT, REPO_CONFIGS
 from glu.models import MatchedUser
 from glu.utils import filterable_menu, multi_select_menu, print_error
 
@@ -70,6 +77,15 @@ class GithubClient:
 
         return file.decoded_content.decode()
 
+    def get_pr(self, number: int) -> PullRequest:
+        return self._repo.get_pull(number)
+
+    def get_pr_checks(self, number: int) -> list[CheckRun]:
+        pr = self.get_pr(number)
+        commits = pr.get_commits()
+        last_commit: Commit = commits[commits.totalCount - 1]
+        return get_all_from_paginated_list(last_commit.get_check_runs())
+
     @property
     def default_branch(self) -> str:
         return self._repo.default_branch
@@ -120,3 +136,71 @@ def prompt_for_reviewers(
         selected_reviewers.append(selected_reviewer)
 
     return selected_reviewers
+
+
+def get_repo_name_from_repo_config(project: str) -> str | None:
+    if not REPO_CONFIGS:
+        return None
+
+    for repo, config in REPO_CONFIGS.items():
+        if config.jira_project_key == project:
+            return repo
+
+    return None
+
+
+def get_pr_approval_status(
+    paginated_reviews: PaginatedList[PullRequestReview],
+) -> Literal["approved", "changes_requested"] | None:
+    reviews = get_all_from_paginated_list(paginated_reviews)
+
+    if any(review.state == "CHANGES_REQUESTED" for review in reviews):
+        return "changes_requested"
+
+    if any(review.state == "APPROVED" for review in reviews):
+        return "approved"
+
+    return None
+
+
+T = TypeVar("T", bound=GithubObject)
+
+
+def get_all_from_paginated_list(paginated_list: PaginatedList[T]) -> list[T]:
+    items: list[T] = []
+    page = 0
+    while True:
+        items_from_page = paginated_list.get_page(page)
+        if not items_from_page:
+            break
+        items += items_from_page
+        page += 1
+
+    return items
+
+
+def print_status_checks(checks: list[CheckRun]) -> None:  # noqa: C901
+    def get_check_attrs(check: CheckRun):  # noqa: C901
+        match (check.status, check.conclusion):
+            case ("queued", _):
+                return ":clock1:", "grey70"
+            case ("in_progress", _):
+                return ":hourglass:", "grey70"
+            case ("completed", "success"):
+                return ":white_check_mark:", "green"
+            case ("completed", "failure"):
+                return ":x:", "red"
+            case ("completed", "cancelled"):
+                return ":grey_exclamation:", "grey82"
+            case ("completed", "neutral"):
+                return ":ok:", "grey70"
+            case ("completed", "timed_out"):
+                return ":alarm_clock:", "orange1"
+            case ("completed", "action_required"):
+                return ":bust_in_silhouette:", "blue"
+            case (_, _):
+                return ":question:", "red"
+
+    for check in checks:
+        emoji, color = get_check_attrs(check)
+        rich.print(f"{emoji}  [{color}]{check.name}[/{color}]")
