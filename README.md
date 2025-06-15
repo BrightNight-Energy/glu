@@ -83,6 +83,9 @@ Options:
 - `--model, -m TEXT`           LLM model  
 - `--mark-done`                Move Jira ticket to done (defaults to False)  
 
+> [!WARNING]
+> Currently only squash-merges are supported
+
 #### `ticket create`
 
 Create a Jira ticket, optionally using AI to generate summary and description:
