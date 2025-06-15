@@ -111,6 +111,33 @@ Options:
 
 The command also accepts additional JIRA fields via `--<field> <value>`.
 
+#### `commit list`
+
+Display a table of commits, similar to `git log` but more compact:
+
+<img align="center" alt="glu commit list" src=".github/assets/commit-list.png" /><br/><br/>
+
+```bash
+glu commit list [OPTIONS]
+```
+
+Options:
+
+- `--limit, -l NUMBER`      Number of commits (defaults to number of commits since main)
+
+
+#### `commit count`
+
+Print the number of commits since checkout to the branch:
+
+```bash
+glu commit count [OPTIONS]
+```
+
+Options:
+
+- `--branch, -b TEXT`      Branch to count from (defaults to default branch)
+
 ### Configuration (`init`)
 
 Initialize your Glu configuration interactively (strongly recommended):

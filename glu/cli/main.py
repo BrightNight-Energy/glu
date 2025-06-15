@@ -3,6 +3,7 @@ from typing import Annotated
 import typer
 
 from glu import __version__
+from glu.cli.commit import index as commit
 from glu.cli.init import init_config
 from glu.cli.pr import index as pr
 from glu.cli.ticket import index as ticket
@@ -130,6 +131,13 @@ app.add_typer(
     ticket.app,
     name="ticket",
     help="Interact with Jira tickets.",
+    rich_help_panel=":rocket: Commands",
+)
+
+app.add_typer(
+    commit.app,
+    name="commit",
+    help="Interact with commits.",
     rich_help_panel=":rocket: Commands",
 )
 

@@ -132,6 +132,15 @@ class GitClient:
         except GitCommandError:
             return False
 
+    def get_commit_count_since_checkout(self, default_branch: str) -> int:
+        main_branch = self._repo.commit(default_branch)
+        head_commit = self._repo.head.commit
+
+        return int(self._repo.git.rev_list("--count", head_commit.hexsha, f"^{main_branch.hexsha}"))
+
+    def get_commit_log(self, limit: int) -> list[Commit]:
+        return list(self._repo.iter_commits(max_count=limit))
+
     @property
     def repo_name(self) -> str:
         if not len(self._repo.remotes):
