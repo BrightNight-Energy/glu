@@ -6,7 +6,7 @@ from git import InvalidGitRepositoryError
 from InquirerPy import inquirer
 
 from glu.ai import get_ai_client, prompt_for_chat_provider
-from glu.config import DEFAULT_JIRA_PROJECT
+from glu.config import DEFAULT_JIRA_PROJECT, PREFERENCES
 from glu.jira import (
     generate_ticket_with_ai,
     get_jira_client,
@@ -14,7 +14,7 @@ from glu.jira import (
     get_user_from_jira,
 )
 from glu.local import get_git_client
-from glu.utils import prompt_or_edit, suppress_traceback
+from glu.utils import add_generated_with_glu_tag, prompt_or_edit, suppress_traceback
 
 
 @suppress_traceback
@@ -68,6 +68,8 @@ def create_ticket(
         )
         summary = ticket_data.summary
         body = ticket_data.description
+        if body and PREFERENCES.add_generated_with_glu_tag:
+            body = add_generated_with_glu_tag(body, supports_markdown=False)
     else:
         if not summary:
             summary = typer.prompt(

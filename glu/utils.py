@@ -148,3 +148,10 @@ def suppress_traceback(func):
             raise typer.Exit(1) from err
 
     return wrapper
+
+
+def add_generated_with_glu_tag(text: str, supports_markdown: bool = True) -> str:
+    if not supports_markdown:
+        return f"{text}\n\nGenerated with [glu|https://github.com/BrightNight-Energy/glu]"
+
+    return f"{text}\n\nGenerated with [glu](https://github.com/BrightNight-Energy/glu)"

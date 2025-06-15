@@ -108,6 +108,13 @@ def init(
             rich_help_panel="Jira Config",
         ),
     ] = None,
+    generated_with_glu_tag: Annotated[
+        bool,
+        typer.Option(
+            help="Add a tag to generated PRs and tickets to spread the word about glu!",
+            rich_help_panel="Preferences",
+        ),
+    ] = True,
 ) -> None:
     """
     Initialize the Glu configuration file interactively.
@@ -121,6 +128,7 @@ def init(
         jira_ready_for_review,
         jira_done,
         default_jira_project,
+        generated_with_glu_tag,
     )
 
 

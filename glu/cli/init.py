@@ -35,6 +35,7 @@ def init_config(
     jira_ready_for_review: str,
     jira_done: str,
     default_jira_project: str | None,
+    generated_with_glu_tag: bool,
 ) -> None:
     cfg_path = config_path()
     rich.print(f"[grey70]Config file will be written to {cfg_path}[/]")
@@ -91,6 +92,8 @@ def init_config(
         "Auto accept generated commits?", ["No", "Yes"]
     ).execute()
     preferences.auto_accept_generated_commits = auto_accept_generated_commits == "Yes"
+
+    preferences.add_generated_with_glu_tag = generated_with_glu_tag
 
     config = Config(env=env, preferences=preferences, repos=repos, jira_issue=jira_config)
 

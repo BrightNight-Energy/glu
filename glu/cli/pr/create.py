@@ -10,7 +10,7 @@ from glu.ai import (
     get_ai_client,
     prompt_for_chat_provider,
 )
-from glu.config import JIRA_IN_PROGRESS_TRANSITION, JIRA_READY_FOR_REVIEW_TRANSITION
+from glu.config import JIRA_IN_PROGRESS_TRANSITION, JIRA_READY_FOR_REVIEW_TRANSITION, PREFERENCES
 from glu.gh import get_github_client, prompt_for_reviewers
 from glu.jira import (
     format_jira_ticket,
@@ -21,7 +21,7 @@ from glu.jira import (
 )
 from glu.local import checkout_to_branch, get_git_client, prompt_commit_edit
 from glu.models import TICKET_PLACEHOLDER
-from glu.utils import print_error, suppress_traceback
+from glu.utils import add_generated_with_glu_tag, print_error, suppress_traceback
 
 
 @suppress_traceback
@@ -152,8 +152,11 @@ def create_pr(  # noqa: C901
         else:
             pass
 
-    if pr_description and ticket and jira_project:
-        pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
+    if pr_description:
+        if ticket and jira_project:
+            pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
+        if PREFERENCES.add_generated_with_glu_tag:
+            pr_description = add_generated_with_glu_tag(pr_description)
 
     pr = gh.create_pr(
         git.current_branch,
