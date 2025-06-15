@@ -29,7 +29,7 @@ def create_ticket(
     ai_prompt: str | None,
     provider: str | None,
     model: str | None,
-    **extra_fields: dict[str, Any],
+    **extra_fields: Any,
 ):
     jira = get_jira_client()
 
