@@ -1,0 +1,42 @@
+[
+  {
+    "hexsha": "c043b6afc7ba90d30e6effe3a64f7dbc43d5eaf2",
+    "committed_datetime": "2025-06-15T16:43:04-04:00",
+    "summary": "fix: modularize command structure and add error suppression",
+    "author": {
+      "name": "teddy"
+    }
+  },
+  {
+    "hexsha": "9d9389b9432d7f34c0881375a60185563c74c428",
+    "committed_datetime": "2025-06-15T16:13:41+00:00",
+    "summary": "chore(release): v2.1.0 [skip ci]",
+    "author": {
+      "name": "github[bot]"
+    }
+  },
+  {
+    "hexsha": "69118b5fdf8e0a0da35007dcc1c9b7761e05c787",
+    "committed_datetime": "2025-06-15T14:11:07-04:00",
+    "summary": "feat: Add ai-driven final commit message generation and pr merge command",
+    "author": {
+      "name": "jack"
+    }
+  },
+  {
+    "hexsha": "35b93029d6097efd9aee8f8767529db0b9638f8f",
+    "committed_datetime": "2025-06-14T19:27:38-04:00",
+    "summary": "chore(release): v2.0.4 [skip ci]",
+    "author": {
+      "name": "github[bot]"
+    }
+  },
+  {
+    "hexsha": "ad3843f6142d3b3f785779238163fbe62ef8c635",
+    "committed_datetime": "2025-06-14T15:25:09-04:00",
+    "summary": "fix: Detect and inject jira ticket placeholder in pr descriptions",
+    "author": {
+      "name": "lisa"
+    }
+  }
+]

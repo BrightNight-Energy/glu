@@ -140,6 +140,21 @@ class FakeGitClient:
     def confirm_branch_exists_in_remote(self) -> bool:
         return True
 
+    def get_commit_count_since_checkout(self, default_branch: str) -> int:
+        return 5
+
+    def get_commit_log(self, limit: int) -> list[Commit]:
+        class CommitAuthor(BaseModel):
+            name: str
+
+        class FakeCommit(BaseModel):
+            author: CommitAuthor
+            summary: str
+            hexsha: str
+            committed_datetime: dt.datetime
+
+        return TypeAdapter(list[FakeCommit]).validate_python(load_json("list_commits.json"))  # type: ignore
+
     @property
     def repo_name(self) -> str:
         return "github/Test-Repo"
