@@ -105,7 +105,7 @@ def merge_pr(  # noqa: C901
     relevant_checks = []
     bad_checks = 0
     for check in gh.get_pr_checks(pr_num):
-        if check.conclusion == "skipped":
+        if check.conclusion == "skipped" or check.status == "waiting":
             continue
 
         relevant_checks.append(check)
