@@ -297,7 +297,7 @@ class FakeGithubClient:
             id: int
             status: str
             completed: bool
-            conclusion: str
+            conclusion: str | None
             name: str
             started_at: dt.datetime
 

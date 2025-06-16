@@ -207,7 +207,9 @@ def prompt_commit_edit(commit_data: CommitGeneration) -> CommitGeneration:
             title_with_type = edited.split("\n\n")[0].strip()
             body = edited.split("\n\n")[1].strip()
             return CommitGeneration(
-                title=title_with_type.split(":")[1], body=body, type=title_with_type.split(":")[0]
+                title=title_with_type.split(":")[1].strip(),
+                body=body,
+                type=title_with_type.split(":")[0].strip(),
             )
         case _:
             raise typer.Exit(0)
