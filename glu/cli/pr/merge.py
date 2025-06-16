@@ -183,6 +183,9 @@ def merge_pr(  # noqa: C901
     try:
         pr.merge(commit_body, commit_title, merge_method="squash", delete_branch=True)
     except GithubException as err:
+        if "Not Found" in str(err):
+            # this failure occurs if github is automatically deleting branches on merge so ignore
+            pass
         print_error(str(err))
         raise typer.Exit(1) from err
 
