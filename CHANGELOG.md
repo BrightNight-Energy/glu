@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.3.1 (2025-06-16)
+
+### Bug Fixes
+
+- Skip waiting ci checks in merge flow
+  ([`e23898d`](https://github.com/BrightNight-Energy/glu/commit/e23898da4171ef336963c3930fdc97658005469d))
+
+
 ## v2.3.0 (2025-06-16)
 
 ### Features
