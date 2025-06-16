@@ -144,17 +144,15 @@ class GitClient:
     def get_branch_commit_map(self, default_branch: str) -> dict[str, set[str]]:
         current_branch = self._repo.active_branch.name
 
-        # Sanity check: both branches must exist
         branches_to_check = []
         if current_branch in self._repo.heads:
             branches_to_check.append(self._repo.heads[current_branch])
         if default_branch in self._repo.heads:
             branches_to_check.append(self._repo.heads[default_branch])
 
-        # Build a mapping from commits to branches
         commit_branch_map: dict[str, set[str]] = {}
         for branch in branches_to_check:
-            for commit in self._repo.iter_commits(branch, max_count=100):  # limit if needed
+            for commit in self._repo.iter_commits(branch, max_count=100):
                 commit_branch_map.setdefault(commit.hexsha, set()).add(branch.name)
 
         return commit_branch_map
