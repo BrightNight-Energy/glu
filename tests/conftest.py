@@ -308,6 +308,10 @@ class FakeGithubClient:
         return TypeAdapter(list[FakeCheckRun]).validate_python(checks)  # type: ignore
 
     @property
+    def delete_branch_on_merge(self) -> bool:
+        return False
+
+    @property
     def default_branch(self) -> str:
         return "main"
 
