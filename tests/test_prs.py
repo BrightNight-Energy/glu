@@ -83,7 +83,7 @@ def _create_pr(
     else:
         child.send(Key.ENTER.value)
 
-    child.expect(re.compile(r"https?://\S+"))
+    child.expect(re.compile(r"https://github\.com/github/Test-Repo/pull/\d+"))
     text = get_terminal_text(child.before + child.after).strip()
 
     assert "### Description" in text
@@ -92,6 +92,8 @@ def _create_pr(
         assert re.search(r"- \*\*Jira Ticket\*\*: \[TEST-\d+]", text)
 
     lines = text.splitlines()
+
+    assert lines[-4] == "Generated with (https://github.com/BrightNight-Energy/glu)"
     assert (
         lines[-2] == "🚀 Created PR in github/Test-Repo with title feat: Add testing to my CLI app"
     )
