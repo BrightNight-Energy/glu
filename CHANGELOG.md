@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v2.2.0 (2025-06-16)
+
+### Bug Fixes
+
+- Modularize command structure and add error suppression
+  ([`c043b6a`](https://github.com/BrightNight-Energy/glu/commit/c043b6afc7ba90d30e6effe3a64f7dbc43d5eaf2))
+
+### Features
+
+- Add 'generated with glu' tag to ai-created prs and tickets
+  ([`7671106`](https://github.com/BrightNight-Energy/glu/commit/76711068374de0ea8cac98e3312558dec4ae8c29))
+
+- Add commit list and commit count commands
+  ([`addf91a`](https://github.com/BrightNight-Energy/glu/commit/addf91aaa4d5531e341afcb3ee623c08348d2b9d))
+
+
 ## v2.1.0 (2025-06-15)
 
 ### Features
