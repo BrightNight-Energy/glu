@@ -1,6 +1,7 @@
 import os
 
 import pexpect
+import toml
 
 from tests import TESTS_DATA_DIR
 from tests.utils import Key, get_terminal_text
@@ -29,6 +30,8 @@ def test_init(env_cli):
     child.send(Key.ENTER.value)  # accept default
     child.expect("Jira 'done' transition name")
     child.send(Key.ENTER.value)  # accept default
+    child.expect("Add a tag to generated PRs and tickets to spread the word about glu?")
+    child.send(f"y{Key.ENTER.value}")  # yes
 
     child.expect("Exit")
 
@@ -86,3 +89,28 @@ def test_init(env_cli):
     child.send(Key.ENTER.value)
 
     child.expect("✅ Config file written to")
+
+    written_config = toml.loads((TESTS_DATA_DIR / "config.toml").read_text())
+    assert written_config == {
+        "env": {
+            "jira_server": "https://jira.atlassian.com",
+            "email": "email@me.com",
+            "jira_api_token": "dfj3kjf9dfj3",
+            "jira_in_progress_transition": "Starting",
+            "jira_ready_for_review_transition": "Ready for review",
+            "jira_done_transition": "Finished",
+            "github_pat": "dfj2k39f04",
+            "openai_config": {
+                "api_key": "adf23hggj9400h",
+                "model": "o4-mini",
+                "provider": "OpenAI",
+            },
+        },
+        "preferences": {
+            "auto_accept_generated_commits": False,
+            "preferred_provider": "OpenAI",
+            "add_generated_with_glu_tag": True,
+        },
+        "repos": {"github/Test-Repo": {"jira_project_key": "TEST"}},
+        "jira_issue": {"Bug": {"issuetemplate": "Description:\n{description}\n"}},
+    }

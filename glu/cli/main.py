@@ -113,6 +113,7 @@ def init(
         typer.Option(
             help="Add a tag to generated PRs and tickets to spread the word about glu!",
             rich_help_panel="Preferences",
+            prompt="Add a tag to generated PRs and tickets to spread the word about glu?",
         ),
     ] = True,
 ) -> None:
