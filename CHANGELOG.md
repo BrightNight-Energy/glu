@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v2.3.2 (2025-06-16)
+
+### Bug Fixes
+
+- Respect repo.delete_branch_on_merge setting when merging prs
+  ([`160c8f0`](https://github.com/BrightNight-Energy/glu/commit/160c8f0f758b58a8f288741cc519a91a71d9f2c8))
+
+- Suppress 'not found' error when source branch auto-deleted
+  ([`4935b1a`](https://github.com/BrightNight-Energy/glu/commit/4935b1ab304a66eb6fa8c9de41e185b5adbc5dba))
+
+
 ## v2.3.1 (2025-06-16)
 
 ### Bug Fixes
