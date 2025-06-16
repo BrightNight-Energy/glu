@@ -24,8 +24,11 @@ def list_commits(limit: int | None) -> None:
 
     commits = git.get_commit_log(num_commits)
 
+    branch_map = git.get_branch_commit_map(gh.default_branch)
+
     commit_table = Table(
         Column(width=19, style="deep_sky_blue1"),
+        Column(no_wrap=True),
         Column(no_wrap=True),
         Column(no_wrap=True, style="chartreuse3"),
         Column(no_wrap=True, style="yellow1"),
@@ -35,10 +38,13 @@ def list_commits(limit: int | None) -> None:
     )
 
     for commit in commits:
+        branches = branch_map.get(commit.hexsha, set())
+        branch = "main" if "main" in branches else branches.pop()
         commit_table.add_row(
             commit.committed_datetime.astimezone().strftime("%a %b %d %H:%M:%S"),
             commit.summary if isinstance(commit.summary, str) else commit.summary.decode(),
-            commit.author.name,
+            Text(branch, "bold turquoise2" if branch == gh.default_branch else "magenta2"),
+            commit.author.name.replace('"', "") if commit.author.name else "",
             commit.hexsha[:7],
         )
 
