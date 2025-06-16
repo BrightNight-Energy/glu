@@ -137,11 +137,17 @@ def create_pr(  # noqa: C901
 
             myself_ref = get_user_from_jira(jira, user_query=None, user_type="reporter")
 
+            ticket_description = ticket_data.description
+            if PREFERENCES.add_generated_with_glu_tag:
+                ticket_description = add_generated_with_glu_tag(
+                    ticket_description, supports_markdown=False
+                )
+
             jira_issue = jira.create_ticket(
                 jira_project,
                 ticket_data.issuetype,
                 ticket_data.summary,
-                ticket_data.description,
+                ticket_description,
                 myself_ref,
                 myself_ref,
             )

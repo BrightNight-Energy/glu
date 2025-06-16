@@ -155,6 +155,10 @@ class FakeGitClient:
 
         return TypeAdapter(list[FakeCommit]).validate_python(load_json("list_commits.json"))  # type: ignore
 
+    def get_branch_commit_map(self, default_branch: str) -> dict[str, set[str]]:
+        commit_branch_map = load_json("commit_branch_map.json")
+        return {k: set(v) for k, v in commit_branch_map.items()}
+
     @property
     def repo_name(self) -> str:
         return "github/Test-Repo"
