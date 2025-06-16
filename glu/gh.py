@@ -87,6 +87,10 @@ class GithubClient:
         return get_all_from_paginated_list(last_commit.get_check_runs())
 
     @property
+    def delete_branch_on_merge(self) -> bool:
+        return self._repo.delete_branch_on_merge
+
+    @property
     def default_branch(self) -> str:
         return self._repo.default_branch
 
