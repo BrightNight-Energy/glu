@@ -41,6 +41,9 @@ class CommitGeneration(BaseModel):
 
     @model_validator(mode="after")
     def validate_title(self) -> "CommitGeneration":
+        if self.title.count(":") > 1:
+            raise ValueError("The char ':' should never appear more than once in the title.")
+
         if self.type in self.title:
             self.title = self.title.split(":")[1].strip()
 
