@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.3.0 (2025-06-16)
+
+### Features
+
+- Add branch column to commit list
+  ([`c8e9ad4`](https://github.com/BrightNight-Energy/glu/commit/c8e9ad4ac257f257aa1481e21727aeda815c0182))
+
+
 ## v2.2.0 (2025-06-16)
 
 ### Bug Fixes
