@@ -13,7 +13,6 @@ from glu.ai import (
     prompt_for_chat_provider,
 )
 from glu.config import (
-    DEFAULT_JIRA_PROJECT,
     JIRA_DONE_TRANSITION,
 )
 from glu.gh import (
@@ -48,22 +47,10 @@ def merge_pr(  # noqa: C901
         repo_name = ""
 
     jira = get_jira_client()
-    jira_project = get_jira_project(jira, repo_name, project) if repo_name else ""
-
-    if not jira_project:
-        if project:
-            jira_project = project
-        elif DEFAULT_JIRA_PROJECT:
-            project_confirmation = typer.confirm(f"Confirm project is {DEFAULT_JIRA_PROJECT}?")
-            if project_confirmation:
-                jira_project = DEFAULT_JIRA_PROJECT
-            else:
-                jira_project = typer.prompt("Enter Jira project name")
-        else:
-            jira_project = typer.prompt("Enter Jira project name")
+    jira_project = get_jira_project(jira, repo_name, project)
 
     if not repo_name:
-        repo = get_repo_name_from_repo_config(jira_project)
+        repo = get_repo_name_from_repo_config(jira_project) if jira_project else None
         if not repo:
             repo_name = f"{typer.prompt('Enter org name')}/{typer.prompt('Enter repo name')}"
         else:
@@ -104,12 +91,15 @@ def merge_pr(  # noqa: C901
 
     relevant_checks = []
     bad_checks = 0
-    for check in gh.get_pr_checks(pr_num):
+    pr_checks = gh.get_pr_checks(pr_num)
+    for check in pr_checks:
         if check.conclusion == "skipped" or check.status == "waiting":
             continue
 
         relevant_checks.append(check)
-        if check.conclusion != "success":
+        if check.conclusion != "success" and check.name not in [
+            check.name for check in pr_checks if check.conclusion == "success"
+        ]:
             bad_checks += 1
 
     if bad_checks:
@@ -123,24 +113,27 @@ def merge_pr(  # noqa: C901
         f"* {msg}" for msg in all_commit_messages[1:]
     )
 
-    if ticket:
-        if not ticket.isdigit():
-            ticket = typer.prompt("Enter ticket number")
-            if not ticket:
-                print_error("No ticket number provided")
-                raise typer.Exit(1)
-        formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
-    else:
-        text = f"{summary_commit_message}\n{pr.body}"
-        jira_matched = _search_jira_key_in_text(text, jira_project)
-        if jira_matched:
-            formatted_ticket = text[jira_matched.start() : jira_matched.end()]
+    formatted_ticket: str | None = None
+    if jira_project:
+        if ticket:
+            if not ticket.isdigit():
+                ticket = typer.prompt(
+                    "Enter ticket number [enter to skip]", default="", show_default=False
+                )
+
+            if ticket:
+                formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
         else:
-            ticket = typer.prompt("Enter ticket number")
-            if not ticket:
-                print_error("No ticket number provided")
-                raise typer.Exit(1)
-            formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
+            text = f"{summary_commit_message}\n{pr.body}"
+            jira_matched = _search_jira_key_in_text(text, jira_project)
+            if jira_matched:
+                formatted_ticket = text[jira_matched.start() : jira_matched.end()]
+            else:
+                ticket = typer.prompt(
+                    "Enter ticket number [enter to skip]", default="", show_default=False
+                )
+                if ticket:
+                    formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
 
     commit_choice = inquirer.select(
         "Create commit message.",
@@ -174,7 +167,11 @@ def merge_pr(  # noqa: C901
                 raise typer.Exit(0)
             commit_title = commit_msg.split("\n\n")[0]
             body = commit_msg.replace(f"{commit_title}\n\n", "", 1).strip()
-            commit_body = f"{body}\n\n{formatted_ticket}" if formatted_ticket not in body else body
+            commit_body = (
+                f"{body}\n\n{formatted_ticket}"
+                if formatted_ticket and formatted_ticket not in body
+                else body
+            )
         case _:
             print_error("No matching choice for commit was provided")
             raise typer.Exit(1)
@@ -193,7 +190,7 @@ def merge_pr(  # noqa: C901
 
     rich.print(f":rocket: Merged PR [bold green]#{pr_num}[/] in [blue]{repo_name}[/]")
 
-    if mark_as_done:
+    if mark_as_done and formatted_ticket:
         ticket_id = formatted_ticket[1:-1]  # remove brackets
         try:
             transitions = jira.get_transitions(ticket_id)
