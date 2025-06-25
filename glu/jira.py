@@ -155,12 +155,15 @@ def generate_ticket_with_ai(
         case "Accept":
             return ticket_data
         case "Edit":
-            edited = typer.edit(f"Summary: {summary}\n\nDescription: {body}")
+            edited = typer.edit(f"Summary: {summary}\n\nBody:\n{body}")
             if edited is None:
                 print_error("No description provided")
                 raise typer.Exit(1)
             summary = edited.split("\n\n")[0].replace("Summary:", "").strip()
-            body = edited.split("\n\n")[1].replace("Description:", "").strip()
+            try:
+                body = edited.split("\n\n")[1].replace("Body:\n", "").strip()
+            except IndexError:
+                body = ""
             return TicketGeneration(
                 description=body, summary=summary, issuetype=ticket_data.issuetype
             )
