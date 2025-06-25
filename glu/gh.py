@@ -205,6 +205,8 @@ def print_status_checks(checks: list[CheckRun]) -> None:  # noqa: C901
             case (_, _):
                 return ":question:", "red"
 
-    for check in checks:
+    unique_checks = {check.name: check for check in checks}
+
+    for check_name, check in unique_checks.items():
         emoji, color = get_check_attrs(check)
-        rich.print(f"{emoji}  [{color}]{check.name}[/{color}]")
+        rich.print(f"{emoji}  [{color}]{check_name}[/{color}]")

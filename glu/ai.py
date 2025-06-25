@@ -372,7 +372,7 @@ def generate_branch_name(
 def generate_final_commit_message(
     chat_client: ChatClient,
     summary_commit_message: str,
-    formatted_ticket: str,
+    formatted_ticket: str | None,
     pr_description: str,
     error: str | None = None,
     retry: int = 0,
