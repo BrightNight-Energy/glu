@@ -115,7 +115,7 @@ class ChatClient:
 
 def get_ai_client(model: str | None) -> ChatClient:
     if os.getenv("GLU_TEST"):
-        from tests.conftest import FakeChatClient
+        from tests.clients.ai import FakeChatClient
 
         return FakeChatClient(model)  # type: ignore
 

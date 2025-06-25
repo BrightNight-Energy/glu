@@ -97,7 +97,7 @@ class GithubClient:
 
 def get_github_client(repo_name: str) -> GithubClient:
     if os.getenv("GLU_TEST"):
-        from tests.conftest import FakeGithubClient
+        from tests.clients.github import FakeGithubClient
 
         return FakeGithubClient(repo_name)  # type: ignore
 
