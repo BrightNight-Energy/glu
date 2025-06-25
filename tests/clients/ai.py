@@ -1,4 +1,6 @@
+# ruff: noqa: ARG002, E501, C901
 import json
+import os
 
 from langchain_core.language_models import BaseChatModel
 
@@ -14,7 +16,7 @@ class FakeChatClient:
 
     def __init__(self, model: str | None):
         self.providers = ["OpenAI", "Ollama"]
-        self.model = model
+        self.model = os.getenv("GLU_TEST_MODEL", "o4-mini")
 
     def run(self, msg: str) -> str:
         if "adding testing" in msg:
