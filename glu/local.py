@@ -176,7 +176,7 @@ class GitClient:
 
 def get_git_client() -> GitClient:
     if os.getenv("GLU_TEST"):
-        from tests.conftest import FakeGitClient
+        from tests.clients.git import FakeGitClient
 
         return FakeGitClient()  # type: ignore
 

@@ -60,7 +60,7 @@ class JiraClient:
 
 def get_jira_client() -> JiraClient:
     if os.getenv("GLU_TEST"):
-        from tests.conftest import FakeJiraClient
+        from tests.clients.jira import FakeJiraClient
 
         return FakeJiraClient()  # type: ignore
     return JiraClient()
