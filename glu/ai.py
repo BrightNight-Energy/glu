@@ -4,6 +4,7 @@ import re
 from json import JSONDecodeError
 
 import rich
+import tiktoken
 import typer
 from InquirerPy import inquirer
 from langchain_core.language_models import BaseChatModel
@@ -18,6 +19,7 @@ from glu.config import (
     DEFAULT_OPENAI_MODEL,
     DEFAULT_XAI_MODEL,
     JIRA_ISSUE_TEMPLATES,
+    MODEL_TOKEN_LIMITS,
     PREFERENCES,
     REPO_CONFIGS,
 )
@@ -27,7 +29,7 @@ from glu.utils import print_error, remove_json_backticks
 
 class ChatClient:
     providers: list[ChatProvider] = []
-    model: str | None = None
+    _model: str | None = None
     _client: BaseChatModel | None = None
 
     def __init__(self, model: str | None):
@@ -48,7 +50,7 @@ class ChatClient:
 
         self.providers.append("Ollama")
 
-        self.model = model
+        self._model = model
 
     def run(self, msg: str) -> str:
         if not self._client:
@@ -72,36 +74,43 @@ class ChatClient:
                 from openai import OpenAI
 
                 client = OpenAI()
-                selected_model = self.model or DEFAULT_OPENAI_MODEL
+                self._model = self._model or DEFAULT_OPENAI_MODEL
                 models = [model.id for model in client.models.list()]
-                if selected_model not in models:
-                    print_error(f"Invalid model for OpenAI: {selected_model}")
+                if self._model not in models:
+                    print_error(f"Invalid model for OpenAI: {self._model}")
                     raise typer.Exit()
-                self._client = ChatOpenAI(model=selected_model)
+                self._client = ChatOpenAI(model=self._model)
             case "Gemini":
                 from langchain_google_genai import ChatGoogleGenerativeAI
 
-                selected_model = self.model or DEFAULT_GEMINI_MODEL
-                self._client = ChatGoogleGenerativeAI(model=selected_model)
+                self._model = self._model or DEFAULT_GEMINI_MODEL
+                self._client = ChatGoogleGenerativeAI(model=self._model)
             case "Anthropic":
                 from langchain_anthropic.chat_models import ChatAnthropic
 
-                selected_model = self.model or DEFAULT_ANTHROPIC_MODEL
-                self._client = ChatAnthropic(model_name=selected_model, timeout=None, stop=None)
+                self._model = self._model or DEFAULT_ANTHROPIC_MODEL
+                self._client = ChatAnthropic(model_name=self._model, timeout=None, stop=None)
             case "Ollama":
                 from langchain_ollama.chat_models import ChatOllama
 
-                selected_model = self.model or DEFAULT_OLLAMA_MODEL
-                self._client = ChatOllama(model=selected_model)
+                self._model = self._model or DEFAULT_OLLAMA_MODEL
+                self._client = ChatOllama(model=self._model)
             case "xAI":
                 from langchain_xai.chat_models import ChatXAI
 
-                selected_model = self.model or DEFAULT_XAI_MODEL
-                self._client = ChatXAI(model=selected_model)
+                self._model = self._model or DEFAULT_XAI_MODEL
+                self._client = ChatXAI(model=self._model)
 
     @property
     def is_setup(self) -> bool:
         return bool(self._client)
+
+    @property
+    def model(self) -> str:
+        if not self._model:
+            print_error("No model set for AI generation")
+            raise typer.Exit(1)
+        return self._model
 
 
 def get_ai_client(model: str | None) -> ChatClient:
@@ -153,7 +162,7 @@ def generate_description(
     PR body:
     {body or "[None provided]"}
 
-    {diff}
+    {_trim_text_to_fit_token_limit(diff, chat_client.model)}
     """
 
     response = chat_client.run(prompt)
@@ -322,7 +331,7 @@ def generate_commit_message(
     {error}
 
     Provide a commit message for the following diff:
-    {diff}
+    {_trim_text_to_fit_token_limit(diff, chat_client.model)}
 
     The branch name sometimes gives a hint to the primary objective of the work,
     use it to inform the commit title.
@@ -421,6 +430,17 @@ def generate_final_commit_message(
         return generate_final_commit_message(
             chat_client, summary_commit_message, formatted_ticket, pr_description, error, retry + 1
         )
+
+
+def _trim_text_to_fit_token_limit(text: str, model: str, buffer_tokens: int = 1000) -> str:
+    max_tokens = MODEL_TOKEN_LIMITS.get(model, 200_000) - buffer_tokens
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        # Use cl100k_base as fallback for Anthropic, Gemini, xAI, etc.
+        encoding = tiktoken.get_encoding("cl100k_base")
+    tokens = encoding.encode(text)
+    return encoding.decode(tokens[:max_tokens])
 
 
 def _generate_issuetype(

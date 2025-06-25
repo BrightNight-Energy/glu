@@ -216,3 +216,57 @@ DEFAULT_OLLAMA_MODEL = (
 )
 
 PREFERENCES = config.preferences
+
+MODEL_TOKEN_LIMITS = {
+    # === OpenAI === https://platform.openai.com/docs/models
+    "gpt-3.5-turbo": 4096,
+    "gpt-3.5-turbo-16k": 16384,
+    "gpt-4": 8192,
+    "gpt-4-32k": 32768,
+    "gpt-4-turbo": 128000,
+    "gpt-4o": 128000,
+    "o4-mini": 200_000,
+    "o3": 200_000,
+    "o3-pro": 200_000,
+    "o3-mini": 200_000,
+    "o1": 200_000,
+    "o1-pro": 200_000,
+    "gpt-4.1": 1_047_576,
+    "gpt-4.1-nano": 1_047_576,
+    "gpt-4.1-mini": 1_047_576,
+    # === Anthropic (Claude) === https://docs.anthropic.com/en/docs/about-claude/models/overview
+    "claude-1": 100000,
+    "claude-2": 100000,
+    "claude-2.1": 200000,
+    "claude-3-haiku-20240307": 200000,
+    "claude-3-sonnet-20240229": 200000,
+    "claude-3-opus-20240229": 200000,
+    "claude-sonnet-4-0": 200_000,
+    "claude-opus-4-20250514": 200_000,
+    "claude-sonnet-4-20250514": 200_000,
+    "claude-3-7-sonnet-20250219": 200_000,
+    "claude-3-5-sonnet-20241022": 200_000,
+    "claude-3-5-haiku-20241022": 200_000,
+    # === Google (Gemini) === https://ai.google.dev/gemini-api/docs/models
+    "gemini-pro": 32000,
+    "gemini-pro-vision": 32000,
+    "gemini-1.5-pro-latest": 1048576,  # 1 million tokens
+    "gemini-1.5-flash-latest": 1048576,
+    "gemini-2.0-flash": 1_048_576,
+    "gemini-2.0-flash-lite": 1_048_576,
+    "gemini-2.5-pro": 1_048_576,
+    "gemini-2.5-flash": 1_048_576,
+    "gemini-2.5-flash-lite-preview-06-17": 1_000_000,
+    # === Meta (LLaMA via Ollama, etc.) ===
+    "llama-2-7b": 4096,
+    "llama-2-13b": 4096,
+    "llama-2-70b": 4096,
+    "llama3-8b": 8192,
+    "llama3-70b": 8192,
+    "llama3.2": 8192,
+    # === xAI (Grok) === https://docs.x.ai/docs/models
+    "grok-3": 131072,
+    "grok-3-fast": 131072,
+    "grok-3-mini": 131072,
+    "grok-3-mini-fast": 131072,
+}
