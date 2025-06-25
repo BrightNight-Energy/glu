@@ -26,33 +26,7 @@ def test_create_pr_w_no_ticket(write_config_w_repo_config, env_cli):
 def test_merge_pr(env_cli, write_config_w_repo_config):
     child = pexpect.spawn("glu pr merge 263", env=env_cli, encoding="utf-8")
 
-    child.expect("Create manually")
-    create_commit_menu = get_terminal_text(child.before + child.after)
-    assert "Create commit message." in create_commit_menu
-    assert "Create with AI" in create_commit_menu
-    assert "Create manually" in create_commit_menu
-
-    child.send(Key.ENTER.value)  # create with AI
-
-    child.expect("Select provider:")
-    child.send(Key.ENTER.value)  # select first provider
-
-    child.expect("Exit")
-    proposed_commit_text = get_terminal_text(child.before + child.after)
-    assert "Proposed commit:" in proposed_commit_text
-    assert (
-        "fix: Detect and inject jira ticket placeholder in pr descriptions" in proposed_commit_text
-    )
-    assert "[TEST-20]" in proposed_commit_text
-    assert "How would you like to proceed?" in proposed_commit_text
-    assert "Accept" in proposed_commit_text
-    assert "Edit" in proposed_commit_text
-
-    child.send(Key.ENTER.value)  # accept
-
-    child.expect("🚀 Merged PR #263 in github/Test-Repo")
-    confirmation_text = get_terminal_text(child.before + child.after)
-    assert "Merging PR..." in confirmation_text
+    _merge_pr(child)
 
 
 def test_merge_draft_pr(env_cli, write_config_w_repo_config):
@@ -91,6 +65,13 @@ def test_merge_pr_w_failing_cicd(env_cli, write_config_w_repo_config):
     assert "✅  Run tests (3.12)" in status_checks
     assert "✅  Run tests (3.11)" in status_checks
     assert "❌  Run tests (3.10)" in status_checks
+
+
+def test_merge_pr_w_no_ticket(env_cli, write_config_w_repo_config):
+    env_cli["PR_HAS_NO_TICKET"] = "1"
+    child = pexpect.spawn("glu pr merge 263", env=env_cli, encoding="utf-8")
+
+    _merge_pr(child, no_ticket=True)
 
 
 def _create_pr(
@@ -168,3 +149,38 @@ def _create_pr(
         lines[-2] == "🚀 Created PR in github/Test-Repo with title feat: Add testing to my CLI app"
     )
     assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
+
+
+def _merge_pr(child: pexpect.spawn, no_ticket: bool = False):
+    if no_ticket:
+        child.expect("Enter ticket number")
+        child.send(Key.ENTER.value)
+
+    child.expect("Create manually")
+    create_commit_menu = get_terminal_text(child.before + child.after)
+    assert "Create commit message." in create_commit_menu
+    assert "Create with AI" in create_commit_menu
+    assert "Create manually" in create_commit_menu
+
+    child.send(Key.ENTER.value)  # create with AI
+
+    child.expect("Select provider:")
+    child.send(Key.ENTER.value)  # select first provider
+
+    child.expect("Exit")
+    proposed_commit_text = get_terminal_text(child.before + child.after)
+    assert "Proposed commit:" in proposed_commit_text
+    assert (
+        "fix: Detect and inject jira ticket placeholder in pr descriptions" in proposed_commit_text
+    )
+    if not no_ticket:
+        assert "[TEST-20]" in proposed_commit_text
+    assert "How would you like to proceed?" in proposed_commit_text
+    assert "Accept" in proposed_commit_text
+    assert "Edit" in proposed_commit_text
+
+    child.send(Key.ENTER.value)  # accept
+
+    child.expect("🚀 Merged PR #263 in github/Test-Repo")
+    confirmation_text = get_terminal_text(child.before + child.after)
+    assert "Merging PR..." in confirmation_text

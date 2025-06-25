@@ -134,6 +134,9 @@ class FakeGithubClient:
         if os.getenv("IS_DRAFT_PR"):
             pr_data["draft"] = True
 
+        if os.getenv("PR_HAS_NO_TICKET"):
+            pr_data["body"] = None
+
         return FakePullRequest.model_validate(pr_data)  # type: ignore
 
     def get_pr_checks(self, number: int) -> list[CheckRun]:
