@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v2.3.3 (2025-06-25)
+
+### Bug Fixes
+
+- Make body optional on ticket create
+  ([`874dff0`](https://github.com/BrightNight-Energy/glu/commit/874dff06f4eb35d89f8b4c30844fc00002403ec4))
+
+- Make jira ticket optional on merge
+  ([`e8dd070`](https://github.com/BrightNight-Energy/glu/commit/e8dd0705dec065598ecc000379faa8c67e462f89))
+
+- Trim large diffs to respect model context limits
+  ([`7669186`](https://github.com/BrightNight-Energy/glu/commit/7669186240c21fd2ba374b438a14f66553306e14))
+
+
 ## v2.3.2 (2025-06-16)
 
 ### Bug Fixes
