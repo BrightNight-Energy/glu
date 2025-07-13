@@ -3,6 +3,7 @@ from typing import Annotated
 import typer
 
 from glu.cli.pr.create import create_pr
+from glu.cli.pr.list import list_prs as list_prs_core
 from glu.cli.pr.merge import merge_pr
 
 app = typer.Typer()
@@ -93,3 +94,24 @@ def merge(  # noqa: C901
     ] = False,
 ):
     merge_pr(pr_num, ticket, project, provider, model, mark_as_done)
+
+
+@app.command(name="list", short_help="List PRs")
+def list_prs(  # noqa: C901
+    repo_name: Annotated[
+        str | None,
+        typer.Option(
+            "--repo",
+            "-r",
+            help="Repo name (defaults to current directory git repository)",
+            show_default=False,
+        ),
+    ] = None,
+    only_mine: Annotated[
+        bool, typer.Option("--only-mine", "-m", help="Filter PRs to those assigned to me")
+    ] = False,
+    no_draft: Annotated[
+        bool, typer.Option("--no-draft", "-d", help="Filter PRs to exclude draft")
+    ] = False,
+):
+    list_prs_core(repo_name, only_mine, no_draft)

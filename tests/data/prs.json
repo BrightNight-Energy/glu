@@ -1,0 +1,18 @@
+[{
+  "number": 373,
+  "title": "feat: Improve stuff",
+  "review_comments": 2,
+  "commits": 1,
+  "assignee": {"login": "melissa"},
+  "draft": false,
+  "labels": [{"name": "ready for review", "color": "FAFC00"}]
+},
+{
+  "number": 372,
+  "title": "fix: Fix everything",
+  "review_comments": 0,
+  "commits": 2,
+  "assignee": {"login": "jack"},
+  "draft": true,
+  "labels": []
+}]
