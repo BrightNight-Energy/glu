@@ -23,6 +23,14 @@ def test_create_pr_w_no_ticket(write_config_w_repo_config, env_cli):
     _create_pr(child, is_git_dirty=True, ticket_generation="skip")
 
 
+def test_create_pr_w_no_gh_template(write_config_w_repo_config, env_cli):
+    env_cli["HAS_NO_REPO_TEMPLATE"] = "1"
+    env_cli["IS_REMOTE_BRANCH_IN_SYNC"] = "1"
+    child = pexpect.spawn("glu pr create", env=env_cli, encoding="utf-8")
+
+    _create_pr(child, ticket_generation="skip")
+
+
 def test_merge_pr(env_cli, write_config_w_repo_config):
     child = pexpect.spawn("glu pr merge 263", env=env_cli, encoding="utf-8")
 
