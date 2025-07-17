@@ -44,7 +44,7 @@ class FakeGithubClient:
         pass
 
     def get_contents(self, path: str, ref: str | None = None) -> str | None:
-        if os.getenv("HAS_REPO_TEMPLATE"):
+        if not os.getenv("HAS_NO_REPO_TEMPLATE"):
             with open(ROOT_DIR / ".github" / "pull_request_template.md", "r") as f:
                 return f.read()
 

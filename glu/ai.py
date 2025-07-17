@@ -135,11 +135,11 @@ def generate_description(
         print_error(f"Failed to generate description after {retry} attempts")
         raise typer.Exit(1)
 
-    template_dir = ".github/pull_request_template.md"
     if not template:
         if REPO_CONFIGS.get(repo_name) and REPO_CONFIGS[repo_name].pr_template:
             template_text: str = REPO_CONFIGS[repo_name].pr_template  # type: ignore
         else:
+            template_dir = "glu/data/pull_request_template.md"
             with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
                 template_text = f.read()
     else:
