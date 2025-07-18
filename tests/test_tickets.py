@@ -53,7 +53,9 @@ def _create_ticket(child: spawn, with_ai: bool = False, select_project: bool = F
         child.expect("Exit")
         ai_ticket_menu = get_terminal_text(child.before + child.after).strip()
 
-        assert "Proposed ticket body:" in ai_ticket_menu
+        assert "Proposed ticket" in ai_ticket_menu
+        assert "Title:" in ai_ticket_menu
+        assert "Body:" in ai_ticket_menu
         assert "- Add tests for main repository commands" in ai_ticket_menu
 
         assert "Accept" in ai_ticket_menu

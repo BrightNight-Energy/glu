@@ -1,16 +1,16 @@
 import os
 from typing import Literal
 
-import rich
 import typer
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
 from jira import JIRA, Issue, Project
+from rich.text import Text
 
 from glu.ai import ChatClient, generate_ticket
 from glu.config import EMAIL, JIRA_API_TOKEN, JIRA_SERVER, REPO_CONFIGS
 from glu.models import IdReference, JiraUser, TicketGeneration
-from glu.utils import filterable_menu, print_error
+from glu.utils import filterable_menu, print_error, print_panel
 
 
 class JiraClient:
@@ -135,8 +135,10 @@ def generate_ticket_with_ai(
     summary = ticket_data.summary
     body = ticket_data.description
 
-    rich.print(f"[grey70]Proposed ticket title:[/]\n{summary}\n")
-    rich.print(f"[grey70]Proposed ticket body:[/]\n{body}")
+    print_panel(
+        title="Proposed ticket",
+        content=Text.from_markup(f"[grey70]Title:[/]\n{summary}\n\ngst[grey70]Body:[/]\n{body}"),
+    )
 
     choices = [
         "Accept",

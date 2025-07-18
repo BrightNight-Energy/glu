@@ -28,7 +28,7 @@ from glu.jira import (
     get_jira_project,
 )
 from glu.local import get_git_client, prompt_commit_edit
-from glu.utils import print_error, suppress_traceback
+from glu.utils import print_error, print_panel, suppress_traceback
 
 
 @suppress_traceback
@@ -59,6 +59,8 @@ def merge_pr(  # noqa: C901
     gh = get_github_client(repo_name)
 
     pr = gh.get_pr(pr_num)
+
+    rich.print("[grey70]Running mergeability checks...[/]")
 
     if pr.draft:
         ready_for_review_confirm = typer.confirm(
@@ -109,7 +111,7 @@ def merge_pr(  # noqa: C901
     commits = get_all_from_paginated_list(pr.get_commits())
 
     all_commit_messages = [commit_ref.commit.message for commit_ref in commits]
-    summary_commit_message = f"{all_commit_messages[0]}\n\n" + "\n\n".join(
+    summary_commit_message = f"{all_commit_messages[0]}\n\n" + "\n".join(
         f"* {msg}" for msg in all_commit_messages[1:]
     )
 
@@ -135,13 +137,25 @@ def merge_pr(  # noqa: C901
                 if ticket:
                     formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
 
+    summary_commit_message += f"\n\n{formatted_ticket}" if formatted_ticket else ""
+    proposed_commit_message = (
+        f"{all_commit_messages[0]}\n\n{formatted_ticket}"
+        if formatted_ticket
+        else all_commit_messages[0]
+    )
+
+    print_panel(title="Proposed commit message", content=proposed_commit_message)
+
     commit_choice = inquirer.select(
         "Create commit message.",
-        ["Create with AI", "Create manually"],
+        ["Accept", "Edit manually", "Regenerate with AI"],
     ).execute()
 
     match commit_choice:
-        case "Create with AI":
+        case "Accept":
+            commit_title = proposed_commit_message.split("\n\n")[0]
+            commit_body = proposed_commit_message.replace(f"{commit_title}\n\n", "", 1).strip()
+        case "Regenerate with AI":
             chat_client = get_ai_client(model)
             chat_provider = prompt_for_chat_provider(
                 chat_client, provider, raise_if_no_api_key=True
@@ -150,36 +164,40 @@ def merge_pr(  # noqa: C901
 
             rich.print("[grey70]Generating commit...[/]\n")
 
+            pr_diff = gh.get_pr_diff(pr_num)
+
             commit_data = prompt_commit_edit(
                 generate_final_commit_message(
                     chat_client,
                     summary_commit_message,
                     formatted_ticket,
+                    pr_diff,
                     pr_description=f"{pr.title}\n\n{pr.body}",
                 )
             )
-            commit_body = f"{commit_data.body}\n\n{formatted_ticket}"
+            commit_body = commit_data.body
             commit_title = commit_data.full_title
-        case "Create manually":
+        case "Edit manually":
             commit_msg = typer.edit(summary_commit_message)
             if not commit_msg:
                 print_error("No commit message provided")
                 raise typer.Exit(0)
             commit_title = commit_msg.split("\n\n")[0]
-            body = commit_msg.replace(f"{commit_title}\n\n", "", 1).strip()
-            commit_body = (
-                f"{body}\n\n{formatted_ticket}"
-                if formatted_ticket and formatted_ticket not in body
-                else body
-            )
+            commit_body = commit_msg.replace(f"{commit_title}\n\n", "", 1).strip()
         case _:
             print_error("No matching choice for commit was provided")
             raise typer.Exit(1)
 
+    commit_body_w_ticket = (
+        f"{commit_body}\n\n{formatted_ticket}"
+        if formatted_ticket and formatted_ticket not in commit_body
+        else commit_body
+    )
+
     rich.print("[grey70]Merging PR...[/]\n")
     try:
         pr.merge(
-            commit_body,
+            commit_body_w_ticket,
             commit_title,
             merge_method="squash",
             delete_branch=not gh.delete_branch_on_merge,  # github will handle if True

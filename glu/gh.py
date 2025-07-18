@@ -1,6 +1,7 @@
 import os
 from typing import Literal, TypeVar
 
+import httpx
 import rich
 import typer
 from github import Auth, Github, GithubException, UnknownObjectException
@@ -85,6 +86,17 @@ class GithubClient:
         commits = pr.get_commits()
         last_commit: Commit = commits[commits.totalCount - 1]
         return get_all_from_paginated_list(last_commit.get_check_runs())
+
+    def get_pr_diff(self, number: int) -> str | None:
+        headers = {
+            "Accept": "application/vnd.github.v3.diff",
+            "Authorization": f"token {GITHUB_PAT}",
+        }
+        url = f"https://api.github.com/repos/{self._repo.full_name}/pulls/{number}"
+        res = httpx.get(url, headers=headers)
+        if res.status_code != 200:
+            return None
+        return res.text
 
     @property
     def delete_branch_on_merge(self) -> bool:

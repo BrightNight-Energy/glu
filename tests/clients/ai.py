@@ -27,11 +27,11 @@ class FakeChatClient:
             return "Chore"
         if "Provide a description and summary for a Jira" in msg:
             return json.dumps(load_json("ai_ticket.json"))
+        if "Provide a commit message for merge into the repo." in msg:
+            return json.dumps(load_json("final_commit_message.json"))
         if "Provide a description for the PR diff below." in msg:
             with open(TESTS_DATA_DIR / "pr_description.txt", "r") as f:
                 return f.read()
-        if "Provide a commit message for merge into the repo." in msg:
-            return json.dumps(load_json("final_commit_message.json"))
         raise NotImplementedError("AI test message not implemented")
 
     def set_chat_model(self, provider: ChatProvider | None) -> None:
