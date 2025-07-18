@@ -121,8 +121,9 @@ def _create_pr(
 
         child.expect("Exit")
         proposed_ticket_text = get_terminal_text(child.before + child.after)
-        assert "Proposed ticket title:" in proposed_ticket_text
-        assert "Proposed ticket body:" in proposed_ticket_text
+        assert "Proposed ticket" in proposed_ticket_text
+        assert "Title:" in proposed_ticket_text
+        assert "Body:" in proposed_ticket_text
         assert "How would you like to proceed?" in proposed_ticket_text
         assert "Accept" in proposed_ticket_text
         assert "Edit" in proposed_ticket_text
