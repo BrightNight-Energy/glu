@@ -432,7 +432,13 @@ def generate_final_commit_message(
             )
 
         return generate_final_commit_message(
-            chat_client, summary_commit_message, formatted_ticket, pr_description, error, retry + 1
+            chat_client,
+            summary_commit_message,
+            formatted_ticket,
+            pr_diff,
+            pr_description,
+            error,
+            retry + 1,
         )
 
 
