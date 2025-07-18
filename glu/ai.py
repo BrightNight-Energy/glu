@@ -382,6 +382,7 @@ def generate_final_commit_message(
     chat_client: ChatClient,
     summary_commit_message: str,
     formatted_ticket: str | None,
+    pr_diff: str | None,
     pr_description: str,
     error: str | None = None,
     retry: int = 0,
@@ -408,6 +409,9 @@ def generate_final_commit_message(
     Be concise in the body, using bullets to give a high level summary. Limit
     to 5-10 bullets. Don't mention version bumps of the package itself or
     testing changes unless testing is the primary purpose of the PR.
+
+    PR diff:
+    {pr_diff or "[Diff too large to display]"}
     """
 
     response = chat_client.run(prompt)

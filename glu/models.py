@@ -4,6 +4,8 @@ from typing import Literal
 from github.NamedUser import NamedUser
 from pydantic import BaseModel, model_validator
 
+from glu.utils import capitalize_first_word
+
 ChatProvider = Literal["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"]
 
 CHAT_PROVIDERS: list[ChatProvider] = ["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"]
@@ -47,7 +49,7 @@ class CommitGeneration(BaseModel):
         if self.type in self.title:
             self.title = self.title.split(":")[1].strip()
 
-        self.title = self.title.capitalize()
+        self.title = capitalize_first_word(self.title)
         return self
 
     @property

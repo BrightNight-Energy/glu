@@ -1,13 +1,11 @@
 import typer
 from git import InvalidGitRepositoryError
-from rich.console import Console
-from rich.panel import Panel
 from rich.table import Column, Table
 from rich.text import Text
 
 from glu.gh import get_github_client
 from glu.local import get_git_client
-from glu.utils import print_error, suppress_traceback
+from glu.utils import print_error, print_panel, suppress_traceback
 
 
 @suppress_traceback
@@ -48,13 +46,4 @@ def list_commits(limit: int | None) -> None:
             commit.hexsha[:7],
         )
 
-    console = Console()
-    console.print(
-        Panel(
-            commit_table,
-            title=Text(f"Commits ({git.current_branch})"),
-            title_align="left",
-            expand=False,
-            border_style="grey70",
-        )
-    )
+    print_panel(title=Text(f"Commits ({git.current_branch})"), content=commit_table)
