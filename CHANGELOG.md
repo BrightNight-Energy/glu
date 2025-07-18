@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.4.0 (2025-07-18)
+
+### Features
+
+- Enhance PR merge workflow with PR diff context and panel refactoring
+  ([`d979d0d`](https://github.com/BrightNight-Energy/glu/commit/d979d0d7c8fa8f00436e27a0e43fc96e47aa5f39))
+
+
 ## v2.3.4 (2025-07-17)
 
 ### Bug Fixes
