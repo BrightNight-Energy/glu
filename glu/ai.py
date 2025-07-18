@@ -387,6 +387,10 @@ def generate_final_commit_message(
     error: str | None = None,
     retry: int = 0,
 ) -> CommitGeneration:
+    if retry > 2:
+        print_error(f"Failed to generate commit after {retry} attempts")
+        raise typer.Exit(1)
+
     response_format = {
         "title": "{commit title}",
         "type": "{conventional commit type}",
@@ -409,6 +413,8 @@ def generate_final_commit_message(
     Be concise in the body, using bullets to give a high level summary. Limit
     to 5-10 bullets. Don't mention version bumps of the package itself or
     testing changes unless testing is the primary purpose of the PR.
+
+    Your response should be in format of {json.dumps(response_format)}.
 
     PR diff:
     {pr_diff or "[Diff too large to display]"}
