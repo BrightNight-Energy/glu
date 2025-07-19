@@ -5,6 +5,7 @@ from typer import Context
 
 from glu.cli.ticket.create import create_ticket
 from glu.cli.ticket.list import list_tickets as list_tickets_core
+from glu.cli.ticket.open import open_ticket as open_ticket_core
 from glu.utils import get_kwargs
 
 app = typer.Typer()
@@ -130,4 +131,15 @@ def list_tickets(
         priorities,
         in_progress_only,
         open=not show_closed,
+    )
+
+
+@app.command(name="open", short_help="Open Jira ticket in web browser")
+def open_ticket(
+    ticket_num: Annotated[int, typer.Argument(help="Ticket number")],
+    project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
+):
+    open_ticket_core(
+        ticket_num,
+        project,
     )
