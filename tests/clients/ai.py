@@ -5,7 +5,6 @@ import os
 from langchain_core.language_models import BaseChatModel
 
 from glu.models import ChatProvider
-from tests import TESTS_DATA_DIR
 from tests.utils import load_json
 
 
@@ -30,8 +29,12 @@ class FakeChatClient:
         if "Provide a commit message for merge into the repo." in msg:
             return json.dumps(load_json("final_commit_message.json"))
         if "Provide a description for the PR diff below." in msg:
-            with open(TESTS_DATA_DIR / "pr_description.txt", "r") as f:
-                return f.read()
+            pr_gen = load_json("pr_description_generation.json")
+            if "Make sure the title follows conventional commit format." in msg:
+                return json.dumps(
+                    pr_gen | {"title": "refactor: Create clients for github, Jira, git and AI"}
+                )
+            return json.dumps(pr_gen)
         raise NotImplementedError("AI test message not implemented")
 
     def set_chat_model(self, provider: ChatProvider | None) -> None:

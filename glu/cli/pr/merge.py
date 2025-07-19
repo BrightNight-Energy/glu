@@ -60,7 +60,7 @@ def merge_pr(  # noqa: C901
 
     pr = gh.get_pr(pr_num)
 
-    rich.print("[grey70]Running mergeability checks...[/]")
+    rich.print(f"[grey70]Running mergeability checks on '{pr.title}'...[/]")
 
     if pr.draft:
         ready_for_review_confirm = typer.confirm(

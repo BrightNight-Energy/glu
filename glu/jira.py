@@ -9,7 +9,7 @@ from rich.text import Text
 
 from glu.ai import ChatClient, generate_ticket
 from glu.config import EMAIL, JIRA_API_TOKEN, JIRA_SERVER, REPO_CONFIGS
-from glu.models import IdReference, JiraUser, TicketGeneration
+from glu.models import TICKET_PLACEHOLDER, IdReference, JiraUser, TicketGeneration
 from glu.utils import filterable_menu, print_error, print_panel
 
 
@@ -201,3 +201,26 @@ def generate_ticket_with_ai(
             )
         case _:
             raise typer.Exit(0)
+
+
+def add_jira_key_to_pr_description(text: str, jira_project: str, jira_key: str | int) -> str:
+    """
+    Replace the placeholder Jira ticket with the formatted Jira key.
+
+    Args:
+        text: The input string to search.
+        jira_key: The Jira key to substitute in place of each [...] match.
+
+    Returns:
+        A new string with all [LETTERS-NUMBERS] patterns replaced.
+    """
+
+    formatted_key = format_jira_ticket(jira_project, jira_key, with_brackets=True)
+
+    if formatted_key in text:
+        return text  # already present
+
+    if TICKET_PLACEHOLDER in text:
+        return text.replace(TICKET_PLACEHOLDER, formatted_key)
+
+    return f"{text}\n\n{formatted_key}"

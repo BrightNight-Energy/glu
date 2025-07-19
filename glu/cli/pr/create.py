@@ -13,6 +13,7 @@ from glu.ai import (
 from glu.config import JIRA_IN_PROGRESS_TRANSITION, JIRA_READY_FOR_REVIEW_TRANSITION, PREFERENCES
 from glu.gh import get_github_client, prompt_for_reviewers
 from glu.jira import (
+    add_jira_key_to_pr_description,
     format_jira_ticket,
     generate_ticket_with_ai,
     get_jira_client,
@@ -20,7 +21,6 @@ from glu.jira import (
     get_user_from_jira,
 )
 from glu.local import checkout_to_branch, get_git_client, prompt_commit_edit
-from glu.models import TICKET_PLACEHOLDER
 from glu.utils import add_generated_with_glu_tag, print_error, suppress_traceback
 
 
@@ -113,9 +113,7 @@ def create_pr(  # noqa: C901
     pr_template = gh.get_contents(".github/pull_request_template.md")
     diff_to_main = git.get_diff("main", gh.default_branch)
     rich.print("[grey70]Generating description...[/]")
-    pr_description = generate_description(
-        chat_client, pr_template, git.repo_name, diff_to_main, body
-    )
+    pr_gen = generate_description(chat_client, pr_template, git.repo_name, diff_to_main, body)
 
     if not ticket:
         ticket_choice = typer.prompt(
@@ -132,7 +130,7 @@ def create_pr(  # noqa: C901
                 chat_client,
                 git.repo_name,
                 issuetypes=issuetypes,
-                pr_description=pr_description,
+                pr_description=pr_gen.description,
             )
 
             myself_ref = get_user_from_jira(jira, user_query=None, user_type="reporter")
@@ -158,16 +156,16 @@ def create_pr(  # noqa: C901
         else:
             pass
 
-    if pr_description:
-        if ticket and jira_project:
-            pr_description = _add_jira_key_to_description(pr_description, jira_project, ticket)
-        if PREFERENCES.add_generated_with_glu_tag:
-            pr_description = add_generated_with_glu_tag(pr_description)
+    pr_description = pr_gen.description
+    if ticket and jira_project:
+        pr_description = add_jira_key_to_pr_description(pr_description, jira_project, ticket)
+    if PREFERENCES.add_generated_with_glu_tag:
+        pr_description = add_generated_with_glu_tag(pr_description)
 
     pr = gh.create_pr(
         git.current_branch,
         title=title,
-        body=pr_description or body or "",
+        body=pr_description,
         draft=draft,
     )
 
@@ -175,7 +173,10 @@ def create_pr(  # noqa: C901
         gh.add_reviewers_to_pr(pr, selected_reviewers)
 
     rich.print(f"\n[grey70]{pr_description}[/]\n")
-    rich.print(f":rocket: Created PR in [blue]{git.repo_name}[/] with title [bold green]{title}[/]")
+    rich.print(
+        f":page_with_curl: Created PR in [blue]{git.repo_name}[/]"
+        f" with title [bold green]'{title}'[/]"
+    )
     rich.print(f"[dark violet]https://github.com/{git.repo_name}/pull/{pr.number}[/]")
 
     if not ticket:
@@ -199,18 +200,7 @@ def create_pr(  # noqa: C901
 
 
 def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | None:
-    commit_message = commit.message if isinstance(commit.message, str) else commit.message.decode()
-    try:
-        body = (
-            commit_message.replace(
-                commit.summary if isinstance(commit.summary, str) else commit.summary.decode(),
-                "",
-            )
-            .lstrip()
-            .rstrip()
-        )
-    except IndexError:
-        body = None
+    body = commit.message if isinstance(commit.message, str) else commit.message.decode()
 
     if not ticket:
         return body
@@ -223,26 +213,3 @@ def _create_pr_body(commit: Commit, jira_key: str, ticket: str | None) -> str | 
         return body
 
     return body.replace(ticket, f"[{ticket_str}]")
-
-
-def _add_jira_key_to_description(text: str, jira_project: str, jira_key: str | int) -> str:
-    """
-    Replace the placeholder Jira ticket with the formatted Jira key.
-
-    Args:
-        text: The input string to search.
-        jira_key: The Jira key to substitute in place of each [...] match.
-
-    Returns:
-        A new string with all [LETTERS-NUMBERS] patterns replaced.
-    """
-
-    formatted_key = format_jira_ticket(jira_project, jira_key, with_brackets=True)
-
-    if formatted_key in text:
-        return text  # already present
-
-    if TICKET_PLACEHOLDER in text:
-        return text.replace(TICKET_PLACEHOLDER, formatted_key)
-
-    return f"{text}\n\n{formatted_key}"

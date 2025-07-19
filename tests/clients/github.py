@@ -17,15 +17,16 @@ from tests import TESTS_DATA_DIR
 from tests.utils import load_json
 
 
+@dataclass
+class FakeUser:
+    login: str
+
+
 class FakeGithubClient:
     def __init__(self, repo_name: str):
         pass
 
     def get_members(self, repo_name: str) -> list[NamedUser]:
-        @dataclass
-        class FakeUser:
-            login: str
-
         return [FakeUser("teddy"), FakeUser("jack"), FakeUser("peter")]  # type: ignore
 
     def create_pr(
@@ -124,6 +125,13 @@ class FakeGithubClient:
             def mark_ready_for_review(self):
                 pass
 
+            @property
+            def requested_reviewers(self) -> list[NamedUser]:
+                if os.getenv("PR_HAS_NO_REVIEWERS"):
+                    return []
+
+                return [FakeUser("teddy")]  # type: ignore
+
         pr_data = load_json("pr_data.json")
         if os.getenv("PR_NOT_MERGEABLE"):
             pr_data["mergeable"] = False
@@ -161,6 +169,15 @@ class FakeGithubClient:
 
         with open(TESTS_DATA_DIR / "diff_to_main.txt", "r") as f:
             return f.read()
+
+    def update_pr(
+        self,
+        pr: PullRequest,
+        title: str | None,
+        body: str | None,
+        draft: bool | None,
+    ) -> None:
+        pass
 
     @property
     def delete_branch_on_merge(self) -> bool:

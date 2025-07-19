@@ -4,12 +4,13 @@ import typer
 
 from glu.cli.pr.create import create_pr
 from glu.cli.pr.merge import merge_pr
+from glu.cli.pr.update import update_pr
 
 app = typer.Typer()
 
 
 @app.command(short_help="Create a PR with description")
-def create(  # noqa: C901
+def create(
     ticket: Annotated[
         str | None,
         typer.Option("--ticket", "-t", help="Jira ticket number"),
@@ -56,7 +57,7 @@ def create(  # noqa: C901
 
 
 @app.command(short_help="Merge a PR")
-def merge(  # noqa: C901
+def merge(
     pr_num: Annotated[int, typer.Argument(help="PR number")],
     ticket: Annotated[
         str | None,
@@ -93,3 +94,51 @@ def merge(  # noqa: C901
     ] = False,
 ):
     merge_pr(pr_num, ticket, project, provider, model, mark_as_done)
+
+
+@app.command(short_help="Update a PR with description")
+def update(
+    pr_num: Annotated[int, typer.Argument(help="PR number")],
+    ticket: Annotated[
+        str | None,
+        typer.Option("--ticket", "-t", help="Jira ticket number"),
+    ] = None,
+    project: Annotated[
+        str | None,
+        typer.Option("--project", "-p", help="Jira project (defaults to default Jira project)"),
+    ] = None,
+    draft: Annotated[bool, typer.Option("--draft", "-d", help="Mark as draft PR")] = False,
+    reviewers: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--reviewer",
+            "-r",
+            help="Requested reviewers (accepts multiple values)",
+            show_default=False,
+        ),
+    ] = None,
+    provider: Annotated[
+        str | None,
+        typer.Option(
+            "--provider",
+            "-pr",
+            help="AI model provider",
+        ),
+    ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="AI model",
+        ),
+    ] = None,
+    ready_for_review: Annotated[
+        bool,
+        typer.Option(
+            "--review",
+            help="Move ticket to ready for review",
+        ),
+    ] = False,
+):
+    update_pr(pr_num, ticket, project, draft, reviewers, provider, model, ready_for_review)

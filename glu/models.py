@@ -25,6 +25,20 @@ class TicketGeneration(BaseModel):
     issuetype: str
 
 
+class PRDescriptionGeneration(BaseModel):
+    description: str
+    title: str | None = None
+    generate_title: bool
+
+    @model_validator(mode="after")
+    def validate_title(self) -> "PRDescriptionGeneration":
+        if self.generate_title and not self.title:
+            raise ValueError("Title is missing")
+        if self.title and ":" not in self.title:
+            raise ValueError("Title must following conventional commit format")
+        return self
+
+
 class IdReference(BaseModel):
     id: str
 

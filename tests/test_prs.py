@@ -82,6 +82,24 @@ def test_merge_pr_w_no_ticket(env_cli, write_config_w_repo_config):
     _merge_pr(child, no_ticket=True)
 
 
+def test_update_pr(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr update 353")
+
+    child.expect("Select provider:")
+    child.send(Key.ENTER.value)  # select first provider
+
+    child.expect(re.compile(r"https://github\.com/github/Test-Repo/pull/\d+"))
+    text = get_terminal_text(child.before + child.after).strip()
+    lines = text.splitlines()
+
+    assert lines[-5] == "Generated with (https://github.com/BrightNight-Energy/glu)"
+    assert (
+        "".join(lines[-3:-1]) == "📄 Updated PR in github/Test-Repo with title "
+        "'refactor: Create clients for github, Jira, git and AI'"
+    )
+    assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
+
+
 def _create_pr(
     child: pexpect.spawn,
     is_git_dirty: bool = False,
@@ -155,7 +173,8 @@ def _create_pr(
 
     assert lines[-4] == "Generated with (https://github.com/BrightNight-Energy/glu)"
     assert (
-        lines[-2] == "🚀 Created PR in github/Test-Repo with title feat: Add testing to my CLI app"
+        lines[-2]
+        == "📃 Created PR in github/Test-Repo with title 'feat: Add testing to my CLI app'"
     )
     assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
 
