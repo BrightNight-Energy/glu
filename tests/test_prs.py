@@ -83,7 +83,7 @@ def test_merge_pr_w_no_ticket(env_cli, write_config_w_repo_config):
 
 
 def test_update_pr(env_cli, write_config_w_repo_config):
-    child = pexpect.spawn("glu pr update 353")
+    child = pexpect.spawn("glu pr update 353", env=env_cli, encoding="utf-8")
 
     child.expect("Select provider:")
     child.send(Key.ENTER.value)  # select first provider
