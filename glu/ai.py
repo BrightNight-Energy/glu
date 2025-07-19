@@ -152,16 +152,18 @@ def generate_description(
     else:
         template_text = template
 
+    requested_content = "description"
     response_format = {"description": "{pr description}"}
     title_prompt = ""
     if generate_title:
         response_format["title"] = "{pr title}"
         title_prompt = "Make sure the title follows conventional commit format. "
+        requested_content = "description and title"
 
     prompt = f"""
     {f"Previous error: {error}" if error else ""}
 
-    Provide a description for the PR diff below using the following format:
+    Provide a {requested_content} for the PR diff below using the following format:
     {json.dumps(response_format, indent=2)}
 
     Be concise and informative about the contents of the PR, relevant to someone
