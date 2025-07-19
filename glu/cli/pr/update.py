@@ -54,10 +54,10 @@ def update_pr(
     )
 
     pr_template = gh.get_contents(".github/pull_request_template.md")
-    diff_to_main = git.get_diff("main", gh.default_branch)
+    pr_diff = gh.get_pr_diff(number)
     rich.print("[grey70]Generating description...[/]")
     pr_gen = generate_description(
-        chat_client, pr_template, git.repo_name, diff_to_main, pr.body, generate_title=True
+        chat_client, pr_template, git.repo_name, pr_diff, pr.body, generate_title=True
     )
 
     pr_description = pr_gen.description

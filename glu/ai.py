@@ -132,7 +132,7 @@ def generate_description(
     chat_client: ChatClient,
     template: str | None,
     repo_name: str,
-    diff: str,
+    diff: str | None,
     body: str | None,
     generate_title: bool = False,
     error: str | None = None,
@@ -175,7 +175,7 @@ def generate_description(
     PR body:
     {body or "[None provided]"}
 
-    {_trim_text_to_fit_token_limit(diff, chat_client.model)}
+    {_trim_text_to_fit_token_limit(diff, chat_client.model) if diff else "[diff too large]"}
     """
 
     response = chat_client.run(prompt)
@@ -451,7 +451,11 @@ def generate_final_commit_message(
     Your response should be in format of {json.dumps(response_format)}.
 
     PR diff:
-    {pr_diff or "[Diff too large to display]"}
+    {
+        _trim_text_to_fit_token_limit(pr_diff, chat_client.model)
+        if pr_diff
+        else "[Diff too large to display]"
+    }
     """
 
     response = chat_client.run(prompt)
