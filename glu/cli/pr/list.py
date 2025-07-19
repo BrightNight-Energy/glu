@@ -51,7 +51,7 @@ def list_prs(  # noqa: C901
         return Emoji.replace(emoji_code) or emoji_code  # fallback if not valid
 
     for pr in prs:
-        title = Text(pr.title, style="grey46" if pr.draft else "white")
+        title = Text(pr.title, style="grey46" if pr.draft else "bright_white")
         if pr.labels:
             for label in pr.labels:
                 title.append(" ")
