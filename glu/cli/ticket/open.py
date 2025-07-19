@@ -6,9 +6,10 @@ from git import InvalidGitRepositoryError
 from glu.config import JIRA_SERVER
 from glu.jira import get_jira_client, get_jira_project
 from glu.local import get_git_client
-from glu.utils import print_error
+from glu.utils import print_error, suppress_traceback
 
 
+@suppress_traceback
 def open_ticket(
     ticket_num: int,
     project: str | None = None,
