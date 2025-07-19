@@ -40,7 +40,6 @@ def list_prs(  # noqa: C901
         Column(style="deep_sky_blue1"),
         Column(no_wrap=True),
         Column(no_wrap=True, style="yellow1"),
-        Column(no_wrap=True, style="dodger_blue2"),
         Column(no_wrap=True, style="green3"),
         box=None,
         padding=(0, 1),
@@ -63,8 +62,7 @@ def list_prs(  # noqa: C901
             str(pr.number),
             title,
             pr.assignee.login if pr.assignee else "",
-            f":speech_balloon:{pr.review_comments}" if pr.review_comments else "",
-            f"⍿{pr.commits}",
+            f"⍿{pr.head.ref}",
         )
 
     console = Console()
