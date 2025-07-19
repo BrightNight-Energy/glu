@@ -4,9 +4,12 @@ import random
 from dataclasses import dataclass
 
 from jira import Issue, Project
+from pydantic import BaseModel, TypeAdapter
 
 from glu.config import JIRA_SERVER
 from glu.models import IdReference, JiraUser
+from tests import TESTS_DATA_DIR
+from tests.utils import load_json
 
 
 class FakeJiraClient:
@@ -60,3 +63,25 @@ class FakeJiraClient:
 
         new_ticket = f"{project}-{random.randint(100, 1000)}"
         return FakeTicket(new_ticket)  # type: ignore
+
+    def search_issues(self, query: str) -> list[Issue]:
+        class JiraObject(BaseModel):
+            name: str
+
+        class JiraUser(BaseModel):
+            displayName: str
+
+        class FakeIssueFields(BaseModel):
+            summary: str
+            status: JiraObject
+            priority: JiraObject
+            assignee: JiraUser | None
+            reporter: JiraUser
+            resolution: JiraObject | None = None
+
+        class FakeIssue(BaseModel):
+            key: str
+            fields: FakeIssueFields
+
+        ticket_data = load_json(TESTS_DATA_DIR / "ticket_list.json")
+        return TypeAdapter(list[FakeIssue]).validate_python(ticket_data)

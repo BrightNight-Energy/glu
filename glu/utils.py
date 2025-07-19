@@ -176,3 +176,14 @@ def print_panel(title: str | Text, content: str | ConsoleRenderable | RichCast) 
             border_style="grey70",
         )
     )
+
+
+def abbreviate_last_name(name: str | None) -> str:
+    if not name:
+        return ""
+
+    splitted = name.split()
+    if len(splitted) == 1:
+        return name
+
+    return f"{splitted[0]} {splitted[1][0]}."
