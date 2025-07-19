@@ -62,7 +62,7 @@ def list_prs(  # noqa: C901
             str(pr.number),
             title,
             pr.assignee.login if pr.assignee else "",
-            f"⍿{pr.head.ref}",
+            f"⍿ {pr.head.ref}",
         )
 
     console = Console()
