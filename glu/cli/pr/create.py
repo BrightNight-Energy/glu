@@ -158,7 +158,8 @@ def create_pr(  # noqa: C901
 
     pr_description = pr_gen.description
     if ticket and jira_project:
-        pr_description = add_jira_key_to_pr_description(pr_description, jira_project, ticket)
+        formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
+        pr_description = add_jira_key_to_pr_description(pr_description, formatted_ticket)
     if PREFERENCES.add_generated_with_glu_tag:
         pr_description = add_generated_with_glu_tag(pr_description)
 

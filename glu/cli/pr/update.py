@@ -15,6 +15,7 @@ from glu.jira import (
     format_jira_ticket,
     get_jira_client,
     get_jira_project,
+    search_and_prompt_for_jira_ticket,
 )
 from glu.local import get_git_client
 from glu.utils import add_generated_with_glu_tag, print_error, suppress_traceback
@@ -47,7 +48,7 @@ def update_pr(
 
     jira = get_jira_client()
 
-    jira_project = get_jira_project(jira, git.repo_name, project) if ticket else ""
+    jira_project = get_jira_project(jira, git.repo_name, project)
 
     selected_reviewers = prompt_for_reviewers(
         gh, reviewers, git.repo_name, draft or bool(pr.requested_reviewers)
@@ -60,9 +61,11 @@ def update_pr(
         chat_client, pr_template, git.repo_name, pr_diff, pr.body, generate_title=True
     )
 
+    formatted_ticket = search_and_prompt_for_jira_ticket(jira_project, ticket, text=pr.body)
+
     pr_description = pr_gen.description
-    if ticket and jira_project:
-        pr_description = add_jira_key_to_pr_description(pr_description, jira_project, ticket)
+    if formatted_ticket:
+        pr_description = add_jira_key_to_pr_description(pr_description, formatted_ticket)
     if PREFERENCES.add_generated_with_glu_tag:
         pr_description = add_generated_with_glu_tag(pr_description)
 

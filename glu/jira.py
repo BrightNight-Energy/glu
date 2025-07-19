@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Literal
 
 import typer
@@ -203,24 +204,64 @@ def generate_ticket_with_ai(
             raise typer.Exit(0)
 
 
-def add_jira_key_to_pr_description(text: str, jira_project: str, jira_key: str | int) -> str:
+def add_jira_key_to_pr_description(text: str, formatted_ticket: str) -> str:
     """
     Replace the placeholder Jira ticket with the formatted Jira key.
 
     Args:
         text: The input string to search.
-        jira_key: The Jira key to substitute in place of each [...] match.
+        formatted_ticket: The Jira key to substitute in place of each [...] match.
 
     Returns:
         A new string with all [LETTERS-NUMBERS] patterns replaced.
     """
 
-    formatted_key = format_jira_ticket(jira_project, jira_key, with_brackets=True)
-
-    if formatted_key in text:
+    if formatted_ticket in text:
         return text  # already present
 
     if TICKET_PLACEHOLDER in text:
-        return text.replace(TICKET_PLACEHOLDER, formatted_key)
+        return text.replace(TICKET_PLACEHOLDER, formatted_ticket)
 
-    return f"{text}\n\n{formatted_key}"
+    return f"{text}\n\n{formatted_ticket}"
+
+
+def search_and_prompt_for_jira_ticket(
+    jira_project: str | None, ticket: str | None, text: str
+) -> str | None:
+    if not jira_project:
+        return None
+
+    if ticket:
+        if not ticket.isdigit():
+            ticket = typer.prompt(
+                "Enter ticket number [enter to skip]", default="", show_default=False
+            )
+
+        if ticket:
+            return format_jira_ticket(jira_project, ticket, with_brackets=True)
+
+    jira_matched = _search_jira_key_in_text(text, jira_project)
+    if jira_matched:
+        return text[jira_matched.start() : jira_matched.end()]
+
+    ticket = typer.prompt("Enter ticket number [enter to skip]", default="", show_default=False)
+    if ticket:
+        return format_jira_ticket(jira_project, ticket, with_brackets=True)
+
+    return None
+
+
+def _search_jira_key_in_text(text: str, jira_project: str) -> re.Match[str] | None:
+    """
+    Search for any substring matching [{jira_project}-NUMBERS/LETTERS] (e.g. [ABC-XX1234]
+    or ABC-XX1234).
+
+    Args:
+        text: The input string to search.
+
+    Returns:
+        The match, if found.
+    """
+    pattern = rf"\[?{jira_project}-[A-Za-z0-9]+\]?"
+
+    return re.search(pattern, text)
