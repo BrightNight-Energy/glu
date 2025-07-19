@@ -25,6 +25,22 @@ def test_create_ticket_w_ai(write_config_w_repo_config, env_cli):
     _create_ticket(child, with_ai=True)
 
 
+def test_list_tickets(write_config_w_repo_config, env_cli):
+    child = pexpect.spawn("glu ticket list", env=env_cli, encoding="utf-8")
+
+    child.expect("────╯")
+    ticket_table = get_terminal_text(child.before + child.after)
+    assert "Summary" in ticket_table
+    assert "Add list tickets command" in ticket_table
+    assert "Add list PRs command" in ticket_table
+    assert "Melissa" in ticket_table
+    assert "Jack D." in ticket_table
+    assert "Medium" in ticket_table
+    assert "Low" in ticket_table
+    assert "To Do" in ticket_table
+    assert "For revi" in ticket_table
+
+
 def _create_ticket(child: spawn, with_ai: bool = False, select_project: bool = False):
     if select_project:
         child.expect("Select project: ")

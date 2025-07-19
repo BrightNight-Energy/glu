@@ -4,6 +4,7 @@ import typer
 from typer import Context
 
 from glu.cli.ticket.create import create_ticket
+from glu.cli.ticket.list import list_tickets as list_tickets_core
 from glu.utils import get_kwargs
 
 app = typer.Typer()
@@ -68,4 +69,65 @@ def create(
         provider,
         model,
         **extra_fields,
+    )
+
+
+@app.command(name="list", short_help="List Jira tickets")
+def list_tickets(
+    project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
+    only_mine: Annotated[
+        bool,
+        typer.Option("--only-mine", "-m", help="Only show my tickets"),
+    ] = False,
+    statuses: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--status",
+            "-s",
+            help="Filter tickets by status (multiple values accepted)",
+            show_default=False,
+        ),
+    ] = None,
+    order_by_priority: Annotated[
+        bool,
+        typer.Option(
+            "--priority-ordered",
+            help="Order by priority (defaults to created date)",
+            show_default=False,
+        ),
+    ] = False,
+    show_closed: Annotated[
+        bool,
+        typer.Option(
+            "--show-closed",
+            "-c",
+            help="Show closed tickets",
+        ),
+    ] = False,
+    priorities: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--priority",
+            "-y",
+            help="Filter tickets by priority (multiple values accepted)",
+            show_default=False,
+        ),
+    ] = None,
+    in_progress_only: Annotated[
+        bool,
+        typer.Option(
+            "--in-progress",
+            "-i",
+            help="Show in progress tickets only",
+        ),
+    ] = False,
+):
+    list_tickets_core(
+        project,
+        only_mine,
+        statuses,
+        order_by_priority,
+        priorities,
+        in_progress_only,
+        open=not show_closed,
     )

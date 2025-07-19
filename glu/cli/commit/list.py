@@ -26,7 +26,7 @@ def list_commits(limit: int | None) -> None:
 
     commit_table = Table(
         Column(width=19, style="deep_sky_blue1"),
-        Column(no_wrap=True),
+        Column(max_width=100, no_wrap=True),
         Column(no_wrap=True),
         Column(no_wrap=True, style="chartreuse3"),
         Column(no_wrap=True, style="yellow1"),

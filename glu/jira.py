@@ -57,6 +57,9 @@ class JiraClient:
 
         return self._client.create_issue(fields)
 
+    def search_issues(self, jql: str) -> list[Issue]:
+        return self._client.search_issues(jql)
+
 
 def get_jira_client() -> JiraClient:
     if os.getenv("GLU_TEST"):
