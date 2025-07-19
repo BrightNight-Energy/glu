@@ -96,7 +96,7 @@ def create_pr(  # noqa: C901
 
     jira = get_jira_client()
 
-    first_commit = git.get_first_commit_since_checkout()
+    first_commit = git.get_first_commit_since_checkout(gh.default_branch)
     commit = latest_commit or first_commit
 
     jira_project = get_jira_project(jira, git.repo_name, project) if ticket else ""
