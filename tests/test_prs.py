@@ -23,6 +23,14 @@ def test_create_pr_w_no_ticket(write_config_w_repo_config, env_cli):
     _create_pr(child, is_git_dirty=True, ticket_generation="skip")
 
 
+def test_create_pr_w_no_gh_template(write_config_w_repo_config, env_cli):
+    env_cli["HAS_NO_REPO_TEMPLATE"] = "1"
+    env_cli["IS_REMOTE_BRANCH_IN_SYNC"] = "1"
+    child = pexpect.spawn("glu pr create", env=env_cli, encoding="utf-8")
+
+    _create_pr(child, ticket_generation="skip")
+
+
 def test_merge_pr(env_cli, write_config_w_repo_config):
     child = pexpect.spawn("glu pr merge 263", env=env_cli, encoding="utf-8")
 
@@ -125,7 +133,7 @@ def _create_pr(
         child.expect("Exit")
 
         proposed_commit_text = get_terminal_text(child.before + child.after)
-        assert "Proposed commit:" in proposed_commit_text
+        assert "Proposed commit message" in proposed_commit_text
         assert "refactor: Unify client abstractions" in proposed_commit_text
         assert "How would you like to proceed?" in proposed_commit_text
         assert "Accept" in proposed_commit_text
@@ -150,8 +158,9 @@ def _create_pr(
 
         child.expect("Exit")
         proposed_ticket_text = get_terminal_text(child.before + child.after)
-        assert "Proposed ticket title:" in proposed_ticket_text
-        assert "Proposed ticket body:" in proposed_ticket_text
+        assert "Proposed ticket" in proposed_ticket_text
+        assert "Title:" in proposed_ticket_text
+        assert "Body:" in proposed_ticket_text
         assert "How would you like to proceed?" in proposed_ticket_text
         assert "Accept" in proposed_ticket_text
         assert "Edit" in proposed_ticket_text
@@ -185,20 +194,21 @@ def _merge_pr(child: pexpect.spawn, no_ticket: bool = False):
         child.expect("Enter ticket number")
         child.send(Key.ENTER.value)
 
-    child.expect("Create manually")
+    child.expect("Regenerate with AI")
     create_commit_menu = get_terminal_text(child.before + child.after)
     assert "Create commit message." in create_commit_menu
-    assert "Create with AI" in create_commit_menu
-    assert "Create manually" in create_commit_menu
+    assert "Accept" in create_commit_menu
+    assert "Edit manually" in create_commit_menu
+    assert "Regenerate with AI" in create_commit_menu
 
-    child.send(Key.ENTER.value)  # create with AI
+    child.send(Key.DOWN.value * 2 + Key.ENTER.value)  # create with AI
 
     child.expect("Select provider:")
     child.send(Key.ENTER.value)  # select first provider
 
     child.expect("Exit")
     proposed_commit_text = get_terminal_text(child.before + child.after)
-    assert "Proposed commit:" in proposed_commit_text
+    assert "Proposed commit message" in proposed_commit_text
     assert (
         "fix: Detect and inject jira ticket placeholder in pr descriptions" in proposed_commit_text
     )

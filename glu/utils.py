@@ -8,6 +8,9 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.validation import Validator
+from rich.console import Console, ConsoleRenderable, RichCast
+from rich.panel import Panel
+from rich.text import Text
 from typer import Context
 
 
@@ -155,3 +158,21 @@ def add_generated_with_glu_tag(text: str, supports_markdown: bool = True) -> str
         return f"{text}\n\nGenerated with [glu|https://github.com/BrightNight-Energy/glu]"
 
     return f"{text}\n\nGenerated with [glu](https://github.com/BrightNight-Energy/glu)"
+
+
+def capitalize_first_word(text: str) -> str:
+    splitted = text.split()
+    return " ".join([splitted[0].capitalize()] + splitted[1:])
+
+
+def print_panel(title: str | Text, content: str | ConsoleRenderable | RichCast) -> None:
+    console = Console()
+    console.print(
+        Panel(
+            content,
+            title=title,
+            title_align="left",
+            expand=False,
+            border_style="grey70",
+        )
+    )

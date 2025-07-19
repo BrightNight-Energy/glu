@@ -14,6 +14,7 @@ from github.PullRequestReview import PullRequestReview
 from pydantic import BaseModel, TypeAdapter
 
 from glu import ROOT_DIR
+from tests import TESTS_DATA_DIR
 from tests.utils import load_json
 
 
@@ -45,7 +46,7 @@ class FakeGithubClient:
         pass
 
     def get_contents(self, path: str, ref: str | None = None) -> str | None:
-        if os.getenv("HAS_REPO_TEMPLATE"):
+        if not os.getenv("HAS_NO_REPO_TEMPLATE"):
             with open(ROOT_DIR / ".github" / "pull_request_template.md", "r") as f:
                 return f.read()
 
@@ -186,6 +187,13 @@ class FakeGithubClient:
             checks[-1]["conclusion"] = "failure"
 
         return TypeAdapter(list[FakeCheckRun]).validate_python(checks)  # type: ignore
+
+    def get_pr_diff(self, number: int) -> str | None:
+        if os.getenv("PR_DIFF_TOO_LARGE"):
+            return None
+
+        with open(TESTS_DATA_DIR / "diff_to_main.txt", "r") as f:
+            return f.read()
 
     @property
     def delete_branch_on_merge(self) -> bool:

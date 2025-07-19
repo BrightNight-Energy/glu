@@ -1,6 +1,7 @@
 import os
 from typing import Callable, Literal, TypeVar
 
+import httpx
 import rich
 import typer
 from github import Auth, Github, GithubException, UnknownObjectException
@@ -97,6 +98,17 @@ class GithubClient:
             filters.append(lambda pr: not pr.draft)
 
         return [pr for pr in prs if all(f(pr) for f in filters)]
+
+    def get_pr_diff(self, number: int) -> str | None:
+        headers = {
+            "Accept": "application/vnd.github.v3.diff",
+            "Authorization": f"token {GITHUB_PAT}",
+        }
+        url = f"https://api.github.com/repos/{self._repo.full_name}/pulls/{number}"
+        res = httpx.get(url, headers=headers)
+        if res.status_code != 200:
+            return None
+        return res.text
 
     @property
     def myself(self) -> str:

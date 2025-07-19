@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v2.4.0 (2025-07-18)
+
+### Features
+
+- Enhance PR merge workflow with PR diff context and panel refactoring
+  ([`d979d0d`](https://github.com/BrightNight-Energy/glu/commit/d979d0d7c8fa8f00436e27a0e43fc96e47aa5f39))
+
+
+## v2.3.4 (2025-07-17)
+
+### Bug Fixes
+
+- Fallback to built-in pr template when repo does not have own pr template
+  ([`4cc09cc`](https://github.com/BrightNight-Energy/glu/commit/4cc09cc6725c17433aa638ae44c6b92af4b69e73))
+
+
 ## v2.3.3 (2025-06-25)
 
 ### Bug Fixes

@@ -135,11 +135,11 @@ def generate_description(
         print_error(f"Failed to generate description after {retry} attempts")
         raise typer.Exit(1)
 
-    template_dir = ".github/pull_request_template.md"
     if not template:
         if REPO_CONFIGS.get(repo_name) and REPO_CONFIGS[repo_name].pr_template:
             template_text: str = REPO_CONFIGS[repo_name].pr_template  # type: ignore
         else:
+            template_dir = "glu/data/pull_request_template.md"
             with open(ROOT_DIR / template_dir, "r", encoding="utf-8") as f:
                 template_text = f.read()
     else:
@@ -382,10 +382,15 @@ def generate_final_commit_message(
     chat_client: ChatClient,
     summary_commit_message: str,
     formatted_ticket: str | None,
+    pr_diff: str | None,
     pr_description: str,
     error: str | None = None,
     retry: int = 0,
 ) -> CommitGeneration:
+    if retry > 2:
+        print_error(f"Failed to generate commit after {retry} attempts")
+        raise typer.Exit(1)
+
     response_format = {
         "title": "{commit title}",
         "type": "{conventional commit type}",
@@ -408,6 +413,11 @@ def generate_final_commit_message(
     Be concise in the body, using bullets to give a high level summary. Limit
     to 5-10 bullets. Don't mention version bumps of the package itself or
     testing changes unless testing is the primary purpose of the PR.
+
+    Your response should be in format of {json.dumps(response_format)}.
+
+    PR diff:
+    {pr_diff or "[Diff too large to display]"}
     """
 
     response = chat_client.run(prompt)
@@ -428,7 +438,13 @@ def generate_final_commit_message(
             )
 
         return generate_final_commit_message(
-            chat_client, summary_commit_message, formatted_ticket, pr_description, error, retry + 1
+            chat_client,
+            summary_commit_message,
+            formatted_ticket,
+            pr_diff,
+            pr_description,
+            error,
+            retry + 1,
         )
 
 

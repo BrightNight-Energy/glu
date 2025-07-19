@@ -10,7 +10,7 @@ from InquirerPy import inquirer
 from glu.ai import ChatClient, generate_branch_name
 from glu.config import PREFERENCES
 from glu.models import CommitGeneration
-from glu.utils import print_error
+from glu.utils import print_error, print_panel
 
 
 class GitClient:
@@ -181,7 +181,7 @@ def prompt_commit_edit(commit_data: CommitGeneration) -> CommitGeneration:
     if PREFERENCES.auto_accept_generated_commits:
         return commit_data
 
-    rich.print(f"[grey70]Proposed commit:[/]\n{commit_data.message}\n")
+    print_panel(title="Proposed commit message", content=commit_data.message)
 
     choices = ["Accept", "Edit", "Exit"]
 
