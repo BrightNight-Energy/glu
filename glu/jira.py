@@ -144,7 +144,7 @@ def generate_ticket_with_ai(
 
     print_panel(
         title="Proposed ticket",
-        content=Text.from_markup(f"[grey70]Title:[/]\n{summary}\n\ngst[grey70]Body:[/]\n{body}"),
+        content=Text.from_markup(f"[grey70]Title:[/]\n{summary}\n\n[grey70]Body:[/]\n{body}"),
     )
 
     choices = [
