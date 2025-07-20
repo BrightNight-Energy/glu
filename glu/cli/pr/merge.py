@@ -140,7 +140,7 @@ def merge_pr(  # noqa: C901
     summary_commit_message += f"\n\n{formatted_ticket}" if formatted_ticket else ""
     proposed_commit_message = (
         f"{all_commit_messages[0]}\n\n{formatted_ticket}"
-        if formatted_ticket
+        if formatted_ticket and formatted_ticket not in all_commit_messages[0]
         else all_commit_messages[0]
     )
 
