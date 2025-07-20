@@ -4,7 +4,7 @@ import os
 import pytest
 import toml
 
-from glu.config import Config, EnvConfig, RepoConfig
+from glu.config import Config, EnvConfig, Preferences, RepoConfig
 from tests import TESTS_DATA_DIR
 
 
@@ -20,6 +20,7 @@ def write_config_w_repo_config():
     default_config = Config(
         env=EnvConfig.defaults(),
         repos={"github/Test-Repo": RepoConfig(jira_project_key="TEST")},
+        preferences=Preferences(add_pr_number_on_merge=False),
     )
     path = TESTS_DATA_DIR / "config.toml"
     path.write_text(toml.dumps(default_config.model_dump()), encoding="utf-8")
