@@ -38,7 +38,7 @@ def test_list_tickets(write_config_w_repo_config, env_cli):
     assert "Medium" in ticket_table
     assert "Low" in ticket_table
     assert "To Do" in ticket_table
-    assert "For revi" in ticket_table
+    assert "For rev" in ticket_table
 
 
 def _create_ticket(child: spawn, with_ai: bool = False, select_project: bool = False):
