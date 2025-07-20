@@ -11,7 +11,7 @@ from github.NamedUser import NamedUser
 from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
 from github.PullRequestReview import PullRequestReview
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter
 
 from glu import ROOT_DIR
 from tests import TESTS_DATA_DIR
@@ -53,6 +53,9 @@ class FakeGithubClient:
         return None
 
     def get_pr(self, number: int) -> PullRequest:
+        class NamedUser(BaseModel):
+            login: str
+
         class FakePullRequest(BaseModel):
             number: int
             title: str
@@ -65,6 +68,7 @@ class FakeGithubClient:
             updated_at: str
             state: str
             draft: bool
+            requested_reviewers: list[NamedUser] = Field(default_factory=list)
 
             def get_commits(self) -> list[Commit]:
                 class FakeCommit(BaseModel):
@@ -94,9 +98,6 @@ class FakeGithubClient:
                 pass
 
             def get_reviews(self) -> PaginatedList[PullRequestReview]:
-                class NamedUser(BaseModel):
-                    login: str
-
                 class PRReview(BaseModel):
                     id: int
                     body: str | None
@@ -124,6 +125,26 @@ class FakeGithubClient:
 
             def mark_ready_for_review(self):
                 pass
+
+            @property
+            def comments(self) -> int:
+                return 2
+
+            @property
+            def commits(self) -> int:
+                return 4
+
+            @property
+            def assignee(self) -> NamedUser:
+                return NamedUser(login="jack")
+
+            @property
+            def head(self):
+                @dataclass
+                class Head:
+                    ref: str
+
+                return Head("fix-ticket-not-in-pr-description")
 
         pr_data = load_json("pr_data.json")
         if os.getenv("PR_NOT_MERGEABLE"):
