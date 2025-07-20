@@ -1,17 +1,14 @@
-import re
-
 import rich
 import typer
 from git import InvalidGitRepositoryError
 from rich.console import Console
-from rich.emoji import Emoji
 from rich.panel import Panel
 from rich.table import Column, Table
 from rich.text import Text
 
 from glu.gh import get_github_client
 from glu.local import get_git_client
-from glu.utils import print_error, suppress_traceback
+from glu.utils import print_error, replace_emoji, suppress_traceback
 
 
 @suppress_traceback
@@ -46,16 +43,12 @@ def list_prs(  # noqa: C901
         show_header=False,
     )
 
-    def replace_emoji(match):
-        emoji_code = match.group(0)
-        return Emoji.replace(emoji_code) or emoji_code  # fallback if not valid
-
     for pr in prs:
         title = Text(pr.title, style="grey46" if pr.draft else "bright_white")
         if pr.labels:
             for label in pr.labels:
                 title.append(" ")
-                text_with_emojis = re.sub(r":[a-zA-Z0-9_+-]+:", replace_emoji, label.name)
+                text_with_emojis = replace_emoji(label.name)
                 title.append(Text(f"[{text_with_emojis}]", style=f"on #{label.color}"))
 
         pr_table.add_row(

@@ -211,28 +211,29 @@ def get_all_from_paginated_list(paginated_list: PaginatedList[T]) -> list[T]:
     return items
 
 
-def print_status_checks(checks: list[CheckRun]) -> None:  # noqa: C901
-    def get_check_attrs(check: CheckRun):  # noqa: C901
-        match (check.status, check.conclusion):
-            case ("queued", _):
-                return ":clock1:", "grey70"
-            case ("in_progress", _):
-                return ":hourglass:", "grey70"
-            case ("completed", "success"):
-                return ":white_check_mark:", "green"
-            case ("completed", "failure"):
-                return ":x:", "red"
-            case ("completed", "cancelled"):
-                return ":grey_exclamation:", "grey82"
-            case ("completed", "neutral"):
-                return ":ok:", "grey70"
-            case ("completed", "timed_out"):
-                return ":alarm_clock:", "orange1"
-            case ("completed", "action_required"):
-                return ":bust_in_silhouette:", "blue"
-            case (_, _):
-                return ":question:", "red"
+def get_check_attrs(check: CheckRun):  # noqa: C901
+    match (check.status, check.conclusion):
+        case ("queued", _):
+            return ":clock1:", "grey70"
+        case ("in_progress", _):
+            return ":hourglass:", "grey70"
+        case ("completed", "success"):
+            return ":white_check_mark:", "green"
+        case ("completed", "failure"):
+            return ":x:", "red"
+        case ("completed", "cancelled"):
+            return ":grey_exclamation:", "grey82"
+        case ("completed", "neutral"):
+            return ":ok:", "grey70"
+        case ("completed", "timed_out"):
+            return ":alarm_clock:", "orange1"
+        case ("completed", "action_required"):
+            return ":bust_in_silhouette:", "blue"
+        case (_, _):
+            return ":question:", "red"
 
+
+def print_status_checks(checks: list[CheckRun]) -> None:  # noqa: C901
     unique_checks = {check.name: check for check in checks}
 
     for check_name, check in unique_checks.items():

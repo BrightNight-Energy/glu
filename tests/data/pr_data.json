@@ -8,7 +8,7 @@
   "number": 34,
   "mergeable_state": "clean",
   "updated_at": "2025-06-14T17:33:41+00:00",
-  "title": "fix:  fix ticket not being properly added to pr descriptions",
+  "title": "fix: fix ticket not being properly added to pr descriptions",
   "state": "open",
   "draft": false
 }
