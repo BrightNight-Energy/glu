@@ -108,6 +108,7 @@ def test_init(env_cli):
         },
         "preferences": {
             "auto_accept_generated_commits": False,
+            "add_pr_number_on_merge": True,
             "preferred_provider": "OpenAI",
             "add_generated_with_glu_tag": True,
         },

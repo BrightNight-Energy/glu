@@ -19,34 +19,28 @@ class GitClient:
         cwd = Path.cwd()
         self._repo = Repo(cwd, search_parent_directories=True)
 
-    def get_first_commit_since_checkout(self) -> Commit:
+    def get_first_commit_since_checkout(self, main_branch: str) -> Commit:
         """
         Return the first commit made on the current branch since it was last checked out.
         If no new commits have been made, returns None.
         """
-        head_ref = self._repo.head  # Reference object for HEAD
+        branch = self._repo.active_branch.name
 
-        # 1) Find the SHA that HEAD pointed to immediately after the last checkout
-        checkout_sha = None
-        for entry in reversed(head_ref.log()):  # this walks the reflog
-            # reflog messages look like: "checkout: moving from main to feature/foo"
-            if entry.message.startswith("checkout: moving from"):
-                checkout_sha = entry.newhexsha
-                break
+        try:
+            base_ref = self._repo.refs[f"origin/{main_branch}"]
+        except IndexError:
+            base_ref = self._repo.refs[main_branch]
 
-        if checkout_sha is None:
-            print_error("Could not find a commit on this branch")
-            raise typer.Exit(1)
+        # Get the merge base between current HEAD and base branch
+        merge_base = self._repo.merge_base(branch, base_ref)[0]
 
-        # 2) List all commits exclusive of that checkout point up to current HEAD
-        rev_range = f"{checkout_sha}..{head_ref.commit.hexsha}"
-        commits = list(self._repo.iter_commits(rev_range))
+        # Get all commits from HEAD back to merge base
+        commits = list(self._repo.iter_commits(f"{merge_base.hexsha}..{branch}"))
 
         if not commits:
-            print_error("Could not find a commit on this branch")
+            print_error(f"No commits found for {branch}")
             raise typer.Exit(1)
 
-        # 3) iter_commits returns newest→oldest, so the last item is the _first_ commit
         return commits[-1]
 
     def remote_branch_in_sync(self, branch: str | None = None, remote_name: str = "origin") -> bool:

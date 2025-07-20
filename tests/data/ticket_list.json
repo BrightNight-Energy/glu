@@ -1,0 +1,86 @@
+[
+  {
+    "key": "TEST-452",
+    "fields": {
+      "summary": "Add list tickets command",
+      "status": {
+        "name": "To Do"
+      },
+      "priority": {
+        "name": "Medium"
+      },
+      "issuetype": {
+        "name": "Story"
+      },
+      "assignee": {
+        "displayName": "Jack Daly"
+      },
+      "reporter": {
+        "displayName": "Jack Daly"
+      }
+    }
+  },
+  {
+    "key": "TEST-462",
+    "fields": {
+      "summary": "Index error on pr merge",
+      "status": {
+        "name": "To Do"
+      },
+      "priority": {
+        "name": "Medium"
+      },
+      "issuetype": {
+        "name": "Bug"
+      },
+      "assignee": {
+        "displayName": "Jack Daly"
+      },
+      "reporter": {
+        "displayName": "Melissa Hartworth"
+      }
+    }
+  },
+  {
+    "key": "TEST-268",
+    "fields": {
+      "summary": "Add list PRs command",
+      "status": {
+        "name": "For review"
+      },
+      "priority": {
+        "name": "Low"
+      },
+      "issuetype": {
+        "name": "Story"
+      },
+      "assignee": {
+        "displayName": "Peter Sacker"
+      },
+      "reporter": {
+        "displayName": "Melissa Hartworth"
+      }
+    }
+  },
+  {
+    "key": "TEST-364",
+    "fields": {
+      "summary": "Add update PR description command",
+      "status": {
+        "name": "For review"
+      },
+      "priority": {
+        "name": "High"
+      },
+      "issuetype": {
+        "name": "Story"
+      },
+      "assignee": {
+        "displayName": "Peter Sacker"
+      },
+      "reporter": {
+        "displayName": "Melissa Hartworth"
+      }
+    }
+  }
+]

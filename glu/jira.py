@@ -6,6 +6,7 @@ import typer
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
 from jira import JIRA, Issue, Project
+from jira.resources import Resolution
 from rich.text import Text
 
 from glu.ai import ChatClient, generate_ticket
@@ -57,6 +58,12 @@ class JiraClient:
         }
 
         return self._client.create_issue(fields)
+
+    def search_issues(self, jql: str) -> list[Issue]:
+        return self._client.search_issues(jql)
+
+    def get_issue(self, project: str, ticket_num: int) -> Issue:
+        return self._client.issue(f"{project}-{ticket_num}")
 
 
 def get_jira_client() -> JiraClient:
@@ -138,7 +145,7 @@ def generate_ticket_with_ai(
 
     print_panel(
         title="Proposed ticket",
-        content=Text.from_markup(f"[grey70]Title:[/]\n{summary}\n\ngst[grey70]Body:[/]\n{body}"),
+        content=Text.from_markup(f"[grey70]Title:[/]\n{summary}\n\n[grey70]Body:[/]\n{body}"),
     )
 
     choices = [
@@ -202,6 +209,30 @@ def generate_ticket_with_ai(
             )
         case _:
             raise typer.Exit(0)
+
+
+def get_color_for_priority(priority: str) -> str:
+    match priority.lower():
+        case "lowest":
+            return "dodger_blue3"
+        case "low":
+            return "dodger_blue1"
+        case "high":
+            return "red1"
+        case "highest":
+            return "red3"
+        case _:
+            return "bright_white"
+
+
+def get_color_for_status(status: str, resolution: Resolution | None) -> str:
+    match status.lower():
+        case "to do":
+            return "white"
+        case _ if resolution:
+            return "chartreuse3"
+        case _:
+            return "bright_white"
 
 
 def add_jira_key_to_pr_description(text: str, formatted_ticket: str) -> str:

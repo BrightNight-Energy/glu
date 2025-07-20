@@ -1,5 +1,5 @@
 import os
-from typing import Literal, TypeVar
+from typing import Callable, Literal, TypeVar
 
 import httpx
 import rich
@@ -57,7 +57,7 @@ class GithubClient:
             body=body or "",
             draft=draft,
         )
-        pr.add_to_assignees(self._client.get_user().login)
+        pr.add_to_assignees(self.myself)
         return pr
 
     def update_pr(
@@ -99,6 +99,18 @@ class GithubClient:
         last_commit: Commit = commits[commits.totalCount - 1]
         return get_all_from_paginated_list(last_commit.get_check_runs())
 
+    def get_prs(self, only_mine: bool = False, no_draft: bool = False) -> list[PullRequest]:
+        prs = get_all_from_paginated_list(self._repo.get_pulls(state="open"))
+
+        filters: list[Callable[[PullRequest], bool]] = []
+        if only_mine:
+            filters.append(lambda pr: bool(pr.assignee and pr.assignee.login == self.myself))
+
+        if no_draft:
+            filters.append(lambda pr: not pr.draft)
+
+        return [pr for pr in prs if all(f(pr) for f in filters)]
+
     def get_pr_diff(self, number: int) -> str | None:
         headers = {
             "Accept": "application/vnd.github.v3.diff",
@@ -109,6 +121,10 @@ class GithubClient:
         if res.status_code != 200:
             return None
         return res.text
+
+    @property
+    def myself(self) -> str:
+        return self._client.get_user().login
 
     @property
     def delete_branch_on_merge(self) -> bool:
@@ -207,28 +223,29 @@ def get_all_from_paginated_list(paginated_list: PaginatedList[T]) -> list[T]:
     return items
 
 
-def print_status_checks(checks: list[CheckRun]) -> None:  # noqa: C901
-    def get_check_attrs(check: CheckRun):  # noqa: C901
-        match (check.status, check.conclusion):
-            case ("queued", _):
-                return ":clock1:", "grey70"
-            case ("in_progress", _):
-                return ":hourglass:", "grey70"
-            case ("completed", "success"):
-                return ":white_check_mark:", "green"
-            case ("completed", "failure"):
-                return ":x:", "red"
-            case ("completed", "cancelled"):
-                return ":grey_exclamation:", "grey82"
-            case ("completed", "neutral"):
-                return ":ok:", "grey70"
-            case ("completed", "timed_out"):
-                return ":alarm_clock:", "orange1"
-            case ("completed", "action_required"):
-                return ":bust_in_silhouette:", "blue"
-            case (_, _):
-                return ":question:", "red"
+def get_check_attrs(check: CheckRun):  # noqa: C901
+    match (check.status, check.conclusion):
+        case ("queued", _):
+            return ":clock1:", "grey70"
+        case ("in_progress", _):
+            return ":hourglass:", "grey70"
+        case ("completed", "success"):
+            return ":white_check_mark:", "green"
+        case ("completed", "failure"):
+            return ":x:", "red"
+        case ("completed", "cancelled"):
+            return ":grey_exclamation:", "grey82"
+        case ("completed", "neutral"):
+            return ":ok:", "grey70"
+        case ("completed", "timed_out"):
+            return ":alarm_clock:", "orange1"
+        case ("completed", "action_required"):
+            return ":bust_in_silhouette:", "blue"
+        case (_, _):
+            return ":question:", "red"
 
+
+def print_status_checks(checks: list[CheckRun]) -> None:  # noqa: C901
     unique_checks = {check.name: check for check in checks}
 
     for check_name, check in unique_checks.items():

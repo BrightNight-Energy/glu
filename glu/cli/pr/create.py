@@ -3,6 +3,7 @@ import typer
 from git import Commit, InvalidGitRepositoryError
 from InquirerPy import inquirer
 from jira import JIRAError
+from rich.markdown import Markdown
 
 from glu.ai import (
     generate_commit_message,
@@ -96,7 +97,7 @@ def create_pr(  # noqa: C901
 
     jira = get_jira_client()
 
-    first_commit = git.get_first_commit_since_checkout()
+    first_commit = git.get_first_commit_since_checkout(gh.default_branch)
     commit = latest_commit or first_commit
 
     jira_project = get_jira_project(jira, git.repo_name, project) if ticket else ""
@@ -173,10 +174,11 @@ def create_pr(  # noqa: C901
     if selected_reviewers:
         gh.add_reviewers_to_pr(pr, selected_reviewers)
 
-    rich.print(f"\n[grey70]{pr_description}[/]\n")
+    rich.print(Markdown(f"## {title}", style="grey70"))
+    rich.print(Markdown(pr_description or "", style="grey70"))
     rich.print(
-        f":page_with_curl: Created PR in [blue]{git.repo_name}[/]"
-        f" with title [bold green]'{title}'[/]"
+        f":page_with_curl: Created PR in [blue]{git.repo_name}[/] "
+        f"with title [bold green]'{title}'[/]"
     )
     rich.print(f"[dark violet]https://github.com/{git.repo_name}/pull/{pr.number}[/]")
 

@@ -1,0 +1,22 @@
+{
+  "key": "TEST-452",
+  "fields": {
+    "summary": "Add list tickets command",
+    "status": {
+      "name": "To Do"
+    },
+    "priority": {
+      "name": "Medium"
+    },
+    "issuetype": {
+      "name": "Story"
+    },
+    "assignee": {
+      "displayName": "Jack Daly"
+    },
+    "reporter": {
+      "displayName": "Jack Daly"
+    },
+    "description": null
+  }
+}

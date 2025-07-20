@@ -82,6 +82,51 @@ def test_merge_pr_w_no_ticket(env_cli, write_config_w_repo_config):
     _merge_pr(child, no_ticket=True)
 
 
+def test_list_prs(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr list", env=env_cli, encoding="utf-8")
+
+    child.expect("jack")
+    pr_table = get_terminal_text(child.before + child.after)
+    assert "feat: Improve stuff" in pr_table
+    assert "fix: Fix everything" in pr_table
+    assert "373" in pr_table
+    assert "372" in pr_table
+
+
+def test_list_prs_no_draft(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr list --no-draft", env=env_cli, encoding="utf-8")
+
+    child.expect("melissa")
+    pr_table = get_terminal_text(child.before + child.after)
+    assert "373" in pr_table
+    assert "372" not in pr_table
+
+
+def test_list_prs_only_mine(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr list --only-mine", env=env_cli, encoding="utf-8")
+
+    child.expect("jack")
+    pr_table = get_terminal_text(child.before + child.after)
+    assert "373" not in pr_table
+    assert "372" in pr_table
+
+
+def test_view_pr(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr view 345", env=env_cli, encoding="utf-8")
+
+    child.expect("────╯")
+    pr_detail = get_terminal_text(child.before + child.after)
+
+    assert "fix: fix ticket not being properly added to pr descriptions" in pr_detail
+    assert "Description" in pr_detail
+    assert "Jira Ticket: TEST-20" in pr_detail
+    assert "Open" in pr_detail
+    assert "Assignee: jack" in pr_detail
+    assert "Reviewers: [None]" in pr_detail
+    assert "fix-ticket-not-in-pr-description" in pr_detail
+    assert "2" in pr_detail
+
+
 def test_update_pr(env_cli, write_config_w_repo_config):
     child = pexpect.spawn("glu pr update 353", env=env_cli, encoding="utf-8")
 
@@ -164,14 +209,14 @@ def _create_pr(
     child.expect(re.compile(r"https://github\.com/github/Test-Repo/pull/\d+"))
     text = get_terminal_text(child.before + child.after).strip()
 
-    assert "### Description" in text
+    assert "Description" in text
 
     if ticket_generation != "skip":
-        assert re.search(r"- \*\*Jira Ticket\*\*: \[TEST-\d+]", text)
+        assert re.search(r"Jira Ticket: \[TEST-\d+]", text)
 
     lines = text.splitlines()
 
-    assert lines[-4] == "Generated with (https://github.com/BrightNight-Energy/glu)"
+    assert lines[-3].strip() == "Generated with glu"
     assert (
         lines[-2]
         == "📃 Created PR in github/Test-Repo with title 'feat: Add testing to my CLI app'"

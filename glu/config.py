@@ -98,6 +98,7 @@ class Preferences(BaseModel):
     auto_accept_generated_commits: bool = False
     preferred_provider: ChatProvider | None = None
     add_generated_with_glu_tag: bool = True
+    add_pr_number_on_merge: bool = True
 
 
 class Config(BaseModel):
