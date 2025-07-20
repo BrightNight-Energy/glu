@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v2.5.0 (2025-07-20)
+
+### Features
+
+- Add `glu pr list` and `glu pr open` commands
+  ([`42fe96f`](https://github.com/BrightNight-Energy/glu/commit/42fe96f3359a7ff218dc18b16c556753303433ba))
+
+- Add `ticket list` command to list Jira tickets
+  ([`9925ae2`](https://github.com/BrightNight-Energy/glu/commit/9925ae2dad5657c749f174e635df0c8209554a53))
+
+- Add PR view command ([#51](https://github.com/BrightNight-Energy/glu/pull/51),
+  [`368324e`](https://github.com/BrightNight-Energy/glu/commit/368324eb0fddc25688fc7f484d5fc9040c4dabae))
+
+- Add view ticket command ([#50](https://github.com/BrightNight-Energy/glu/pull/50),
+  [`d261da4`](https://github.com/BrightNight-Energy/glu/commit/d261da4b2f8e3863c9c43496bd341a184f5a29ec))
+
+- Display mergeability status ([#53](https://github.com/BrightNight-Energy/glu/pull/53),
+  [`ccf7a03`](https://github.com/BrightNight-Energy/glu/commit/ccf7a038464f3f78aa65c5e78be9099aabd8de3e))
+
+- Optionally append PR number to merge commit title
+  ([#52](https://github.com/BrightNight-Energy/glu/pull/52),
+  [`a24cb92`](https://github.com/BrightNight-Energy/glu/commit/a24cb9231b0e76c4fa02fd0633a06e7c95ebd2b0))
+
+- Support AI-generated PR titles and add update command
+  ([#48](https://github.com/BrightNight-Energy/glu/pull/48),
+  [`4ddcd2c`](https://github.com/BrightNight-Energy/glu/commit/4ddcd2c3c54e4e0c751dfe77768c85c9d0abc8bc))
+
+
 ## v2.4.0 (2025-07-18)
 
 ### Features
