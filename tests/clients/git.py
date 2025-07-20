@@ -12,7 +12,7 @@ from tests.utils import load_json
 
 
 class FakeGitClient:
-    def get_first_commit_since_checkout(self) -> Commit:
+    def get_first_commit_since_checkout(self, main_branch: str) -> Commit:
         @dataclass
         class FakeCommit:
             message: str

@@ -1,5 +1,5 @@
 import os
-from typing import Literal, TypeVar
+from typing import Callable, Literal, TypeVar
 
 import httpx
 import rich
@@ -57,7 +57,7 @@ class GithubClient:
             body=body or "",
             draft=draft,
         )
-        pr.add_to_assignees(self._client.get_user().login)
+        pr.add_to_assignees(self.myself)
         return pr
 
     def add_reviewers_to_pr(self, pr: PullRequest, reviewers: list[NamedUser]) -> None:
@@ -87,6 +87,18 @@ class GithubClient:
         last_commit: Commit = commits[commits.totalCount - 1]
         return get_all_from_paginated_list(last_commit.get_check_runs())
 
+    def get_prs(self, only_mine: bool = False, no_draft: bool = False) -> list[PullRequest]:
+        prs = get_all_from_paginated_list(self._repo.get_pulls(state="open"))
+
+        filters: list[Callable[[PullRequest], bool]] = []
+        if only_mine:
+            filters.append(lambda pr: bool(pr.assignee and pr.assignee.login == self.myself))
+
+        if no_draft:
+            filters.append(lambda pr: not pr.draft)
+
+        return [pr for pr in prs if all(f(pr) for f in filters)]
+
     def get_pr_diff(self, number: int) -> str | None:
         headers = {
             "Accept": "application/vnd.github.v3.diff",
@@ -97,6 +109,10 @@ class GithubClient:
         if res.status_code != 200:
             return None
         return res.text
+
+    @property
+    def myself(self) -> str:
+        return self._client.get_user().login
 
     @property
     def delete_branch_on_merge(self) -> bool:
