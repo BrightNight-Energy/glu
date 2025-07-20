@@ -6,6 +6,7 @@ from typer import Context
 from glu.cli.ticket.create import create_ticket
 from glu.cli.ticket.list import list_tickets as list_tickets_core
 from glu.cli.ticket.open import open_ticket as open_ticket_core
+from glu.cli.ticket.view import view_ticket
 from glu.utils import get_kwargs
 
 app = typer.Typer()
@@ -114,6 +115,15 @@ def list_tickets(
             show_default=False,
         ),
     ] = None,
+    types: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--type",
+            "-t",
+            help="Filter tickets by issue type (multiple values accepted)",
+            show_default=False,
+        ),
+    ] = None,
     in_progress_only: Annotated[
         bool,
         typer.Option(
@@ -129,6 +139,7 @@ def list_tickets(
         statuses,
         order_by_priority,
         priorities,
+        types,
         in_progress_only,
         open=not show_closed,
     )
@@ -139,7 +150,12 @@ def open_ticket(
     ticket_num: Annotated[int, typer.Argument(help="Ticket number")],
     project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
 ):
-    open_ticket_core(
-        ticket_num,
-        project,
-    )
+    open_ticket_core(ticket_num, project)
+
+
+@app.command(short_help="View Jira ticket")
+def view(
+    ticket_num: Annotated[int, typer.Argument(help="Ticket number")],
+    project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
+):
+    view_ticket(ticket_num, project)

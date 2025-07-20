@@ -9,6 +9,9 @@
       "priority": {
         "name": "Medium"
       },
+      "issuetype": {
+        "name": "Story"
+      },
       "assignee": {
         "displayName": "Jack Daly"
       },
@@ -26,6 +29,9 @@
       },
       "priority": {
         "name": "Medium"
+      },
+      "issuetype": {
+        "name": "Bug"
       },
       "assignee": {
         "displayName": "Jack Daly"
@@ -45,6 +51,9 @@
       "priority": {
         "name": "Low"
       },
+      "issuetype": {
+        "name": "Story"
+      },
       "assignee": {
         "displayName": "Peter Sacker"
       },
@@ -62,6 +71,9 @@
       },
       "priority": {
         "name": "High"
+      },
+      "issuetype": {
+        "name": "Story"
       },
       "assignee": {
         "displayName": "Peter Sacker"

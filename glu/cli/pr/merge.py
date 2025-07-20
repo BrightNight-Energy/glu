@@ -141,7 +141,7 @@ def merge_pr(  # noqa: C901
     summary_commit_message += f"\n\n{formatted_ticket}" if formatted_ticket else ""
     proposed_commit_message = (
         f"{all_commit_messages[0]}\n\n{formatted_ticket}"
-        if formatted_ticket
+        if formatted_ticket and formatted_ticket not in all_commit_messages[0]
         else all_commit_messages[0]
     )
 
@@ -179,7 +179,7 @@ def merge_pr(  # noqa: C901
             commit_body = commit_data.body
             commit_title = commit_data.full_title
         case "Edit manually":
-            commit_msg = typer.edit(summary_commit_message)
+            commit_msg = typer.edit(proposed_commit_message)
             if not commit_msg:
                 print_error("No commit message provided")
                 raise typer.Exit(0)

@@ -4,7 +4,7 @@ from git import InvalidGitRepositoryError
 from rich.table import Column, Table
 from rich.text import Text
 
-from glu.jira import get_jira_client, get_jira_project
+from glu.jira import get_color_for_priority, get_color_for_status, get_jira_client, get_jira_project
 from glu.local import get_git_client
 from glu.utils import abbreviate_last_name, print_error, print_panel, suppress_traceback
 
@@ -16,6 +16,7 @@ def list_tickets(  # noqa: C901
     statuses: list[str] | None,
     order_by_priority: bool,
     priorities: list[str] | None,
+    types: list[str] | None,
     in_progress_only: bool,
     open: bool,
 ) -> None:
@@ -44,6 +45,9 @@ def list_tickets(  # noqa: C901
         if in_progress_only:
             issue_filters.append('status != "to do"')
 
+    if types:
+        issue_filters.append(f"issuetype IN ({','.join(types)})")
+
     if priorities:
         issue_filters.append(f"priority IN ({','.join(priorities)})")
 
@@ -59,6 +63,7 @@ def list_tickets(  # noqa: C901
         Column(width=2),
         Column("Key", style="deep_sky_blue1"),
         Column("Summary", max_width=100, no_wrap=True),
+        Column("Type", no_wrap=True, style="yellow1"),
         Column("Status", no_wrap=True),
         Column("Priority", no_wrap=True),
         Column("Assignee", no_wrap=True, style="light_steel_blue"),
@@ -68,44 +73,25 @@ def list_tickets(  # noqa: C901
     )
 
     for issue in issues:
+        fields = issue.fields
         status_emoji = ""
-        if issue.fields.resolution:
+        if fields.resolution:
             status_emoji = ":white_check_mark:"
-        elif issue.fields.status.name.lower() != "to do":
+        elif fields.status.name.lower() != "to do":
             status_emoji = ":small_blue_diamond:"
 
-        match issue.fields.priority.name.lower():
-            case "lowest":
-                priority_color = "dodger_blue3"
-            case "low":
-                priority_color = "dodger_blue1"
-            case "high":
-                priority_color = "red1"
-            case "highest":
-                priority_color = "red3"
-            case _:
-                priority_color = "bright_white"
-
-        match issue.fields.status.name.lower():
-            case "to do":
-                status_color = "white"
-            case _ if issue.fields.resolution:
-                status_color = "chartreuse3"
-            case _:
-                status_color = "bright_white"
+        priority_color = get_color_for_priority(fields.priority.name)
+        status_color = get_color_for_status(fields.status.name, fields.resolution)
 
         ticket_table.add_row(
             status_emoji,
             issue.key,
-            Text(issue.fields.summary, style=status_color),
-            Text(issue.fields.status.name, style=status_color),
-            Text(issue.fields.priority.name, style=priority_color),
-            abbreviate_last_name(
-                issue.fields.assignee.displayName if issue.fields.assignee else None
-            ),
-            abbreviate_last_name(
-                issue.fields.reporter.displayName if issue.fields.reporter else None
-            ),
+            Text(fields.summary, style=status_color),
+            Text(fields.issuetype.name),
+            Text(fields.status.name, style=status_color),
+            Text(fields.priority.name, style=priority_color),
+            abbreviate_last_name(fields.assignee.displayName if fields.assignee else None),
+            abbreviate_last_name(fields.reporter.displayName if fields.reporter else None),
         )
 
     print_panel(title=Text(f"Tickets ({jira_project})"), content=ticket_table)

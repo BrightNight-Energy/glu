@@ -38,7 +38,23 @@ def test_list_tickets(write_config_w_repo_config, env_cli):
     assert "Medium" in ticket_table
     assert "Low" in ticket_table
     assert "To Do" in ticket_table
-    assert "For revi" in ticket_table
+    assert "For rev" in ticket_table
+
+
+def test_view_ticket(write_config_w_repo_config, env_cli):
+    child = pexpect.spawn("glu ticket view 354", env=env_cli, encoding="utf-8")
+
+    child.expect("────╯")
+    ticket_detail = get_terminal_text(child.before + child.after)
+
+    assert "Title:" in ticket_detail
+    assert "Add list tickets command" in ticket_detail
+    assert "Status: To Do" in ticket_detail
+    assert "Type: Story" in ticket_detail
+    assert "Assignee: Jack Daly" in ticket_detail
+    assert "Reporter: Jack Daly" in ticket_detail
+    assert "Priority: Medium" in ticket_detail
+    assert "Body:" not in ticket_detail
 
 
 def _create_ticket(child: spawn, with_ai: bool = False, select_project: bool = False):
