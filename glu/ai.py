@@ -23,7 +23,13 @@ from glu.config import (
     PREFERENCES,
     REPO_CONFIGS,
 )
-from glu.models import TICKET_PLACEHOLDER, ChatProvider, CommitGeneration, TicketGeneration
+from glu.models import (
+    TICKET_PLACEHOLDER,
+    ChatProvider,
+    CommitGeneration,
+    PRDescriptionGeneration,
+    TicketGeneration,
+)
 from glu.utils import print_error, remove_json_backticks
 
 
@@ -126,11 +132,12 @@ def generate_description(
     chat_client: ChatClient,
     template: str | None,
     repo_name: str,
-    diff: str,
+    diff: str | None,
     body: str | None,
+    generate_title: bool = False,
     error: str | None = None,
     retry: int = 0,
-) -> str | None:
+) -> PRDescriptionGeneration:
     if retry > 2:
         print_error(f"Failed to generate description after {retry} attempts")
         raise typer.Exit(1)
@@ -145,43 +152,70 @@ def generate_description(
     else:
         template_text = template
 
-    ticket_placeholder_pattern = r"\[[A-Z]{2,}-[A-Z0-9]+]"
-    ticket_placeholder_match = re.search(ticket_placeholder_pattern, template_text)
+    requested_content = "description"
+    response_format = {"description": "{pr description}"}
+    title_prompt = ""
+    if generate_title:
+        response_format["title"] = "{pr title}"
+        title_prompt = "Make sure the title follows conventional commit format. "
+        requested_content = "description and title"
 
     prompt = f"""
     {f"Previous error: {error}" if error else ""}
 
-    Provide a description for the PR diff below.
+    Provide a {requested_content} for the PR diff below using the following format:
+    {json.dumps(response_format, indent=2)}
 
     Be concise and informative about the contents of the PR, relevant to someone
     reviewing the PR. Don't describe changes to testing, unless testing is the main
     purpose for the PR. Leave any Jira ticket placeholder as it was in the template.
-    Write the description using the following template:
+    {title_prompt}Write the description using the following template:
     {template}
 
     PR body:
     {body or "[None provided]"}
 
-    {_trim_text_to_fit_token_limit(diff, chat_client.model)}
+    {_trim_text_to_fit_token_limit(diff, chat_client.model) if diff else "[diff too large]"}
     """
 
     response = chat_client.run(prompt)
 
-    if ticket_placeholder_match:
-        template_placeholder = template_text[
-            ticket_placeholder_match.start() : ticket_placeholder_match.end()
-        ]
-        if template_placeholder not in response:
+    ticket_placeholder_pattern = r"\[[A-Z]{2,}-[A-Z0-9]+]"
+    ticket_placeholder_match = re.search(ticket_placeholder_pattern, template_text)
+
+    try:
+        parsed = json.loads(remove_json_backticks(response))
+        pr_gen = PRDescriptionGeneration.model_validate(parsed | {"generate_title": generate_title})
+    except (JSONDecodeError, ValidationError) as err:
+        if isinstance(err, JSONDecodeError):
             error = (
-                f"The ticket placeholder '{template_placeholder}' was not found in the response."
+                f"Your response was not in valid JSON format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}"
             )
-            return generate_description(
-                chat_client, template, repo_name, diff, body, error, retry + 1
+        else:
+            error = (
+                f"Your response was in invalid format. Make sure it is in format of: "
+                f"{json.dumps(response_format)}. Error: {err}"
             )
 
-        return re.sub(ticket_placeholder_pattern, TICKET_PLACEHOLDER, response)
+        return generate_description(
+            chat_client, template, repo_name, diff, body, generate_title, error, retry + 1
+        )
 
-    return response
+    if not ticket_placeholder_match:
+        return pr_gen
+
+    template_placeholder = template_text[
+        ticket_placeholder_match.start() : ticket_placeholder_match.end()
+    ]
+    if template_placeholder not in response:
+        error = f"The ticket placeholder '{template_placeholder}' was not found in the response."
+        return generate_description(
+            chat_client, template, repo_name, diff, body, generate_title, error, retry + 1
+        )
+
+    pr_gen.description = re.sub(ticket_placeholder_pattern, TICKET_PLACEHOLDER, pr_gen.description)
+    return pr_gen
 
 
 def generate_ticket(
@@ -417,7 +451,11 @@ def generate_final_commit_message(
     Your response should be in format of {json.dumps(response_format)}.
 
     PR diff:
-    {pr_diff or "[Diff too large to display]"}
+    {
+        _trim_text_to_fit_token_limit(pr_diff, chat_client.model)
+        if pr_diff
+        else "[Diff too large to display]"
+    }
     """
 
     response = chat_client.run(prompt)

@@ -14,8 +14,9 @@ class Key(Enum):
     DOWN = "\x1b[B"
 
 
-def get_terminal_text(text: str) -> str:
+def get_terminal_text(output: str | bytes) -> str:
     ansi_re = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+    text = output.decode("utf-8") if isinstance(output, bytes) else output
     output = ansi_re.sub("", text)
     rich.print(output)
     return output

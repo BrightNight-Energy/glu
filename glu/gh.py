@@ -7,7 +7,7 @@ import typer
 from github import Auth, Github, GithubException, UnknownObjectException
 from github.CheckRun import CheckRun
 from github.Commit import Commit
-from github.GithubObject import GithubObject
+from github.GithubObject import GithubObject, NotSet
 from github.NamedUser import NamedUser
 from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
@@ -59,6 +59,18 @@ class GithubClient:
         )
         pr.add_to_assignees(self.myself)
         return pr
+
+    def update_pr(
+        self,
+        pr: PullRequest,
+        title: str | None,
+        body: str | None,
+        draft: bool | None,
+    ) -> None:
+        if draft and not pr.draft:
+            pr.convert_to_draft()
+
+        pr.edit(title or NotSet, body or NotSet)
 
     def add_reviewers_to_pr(self, pr: PullRequest, reviewers: list[NamedUser]) -> None:
         for reviewer in reviewers:

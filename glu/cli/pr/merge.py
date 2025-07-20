@@ -24,9 +24,9 @@ from glu.gh import (
     print_status_checks,
 )
 from glu.jira import (
-    format_jira_ticket,
     get_jira_client,
     get_jira_project,
+    search_and_prompt_for_jira_ticket,
 )
 from glu.local import get_git_client, prompt_commit_edit
 from glu.utils import print_error, print_panel, suppress_traceback
@@ -61,7 +61,7 @@ def merge_pr(  # noqa: C901
 
     pr = gh.get_pr(pr_num)
 
-    rich.print("[grey70]Running mergeability checks...[/]")
+    rich.print(f"[grey70]Running mergeability checks on '{pr.title}'...[/]")
 
     if pr.draft:
         ready_for_review_confirm = typer.confirm(
@@ -116,27 +116,9 @@ def merge_pr(  # noqa: C901
         f"* {msg}" for msg in all_commit_messages[1:]
     )
 
-    formatted_ticket: str | None = None
-    if jira_project:
-        if ticket:
-            if not ticket.isdigit():
-                ticket = typer.prompt(
-                    "Enter ticket number [enter to skip]", default="", show_default=False
-                )
-
-            if ticket:
-                formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
-        else:
-            text = f"{summary_commit_message}\n{pr.body}"
-            jira_matched = _search_jira_key_in_text(text, jira_project)
-            if jira_matched:
-                formatted_ticket = text[jira_matched.start() : jira_matched.end()]
-            else:
-                ticket = typer.prompt(
-                    "Enter ticket number [enter to skip]", default="", show_default=False
-                )
-                if ticket:
-                    formatted_ticket = format_jira_ticket(jira_project, ticket, with_brackets=True)
+    formatted_ticket = search_and_prompt_for_jira_ticket(
+        jira_project, ticket, text=f"{summary_commit_message}\n{pr.body}"
+    )
 
     summary_commit_message += f"\n\n{formatted_ticket}" if formatted_ticket else ""
     proposed_commit_message = (

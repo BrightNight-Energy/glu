@@ -112,6 +112,7 @@ def test_list_prs_only_mine(env_cli, write_config_w_repo_config):
 
 
 def test_view_pr(env_cli, write_config_w_repo_config):
+    env_cli["PR_HAS_NO_REVIEWERS"] = "1"
     child = pexpect.spawn("glu pr view 345", env=env_cli, encoding="utf-8")
 
     child.expect("────╯")
@@ -125,6 +126,24 @@ def test_view_pr(env_cli, write_config_w_repo_config):
     assert "Reviewers: [None]" in pr_detail
     assert "fix-ticket-not-in-pr-description" in pr_detail
     assert "2" in pr_detail
+
+
+def test_update_pr(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr update 353", env=env_cli, encoding="utf-8")
+
+    child.expect("Select provider:")
+    child.send(Key.ENTER.value)  # select first provider
+
+    child.expect(re.compile(r"https://github\.com/github/Test-Repo/pull/\d+"))
+    text = get_terminal_text(child.before + child.after).strip()
+    lines = text.splitlines()
+
+    assert lines[-5] == "Generated with (https://github.com/BrightNight-Energy/glu)"
+    assert (
+        "".join(lines[-3:-1]) == "📄 Updated PR in github/Test-Repo with title "
+        "'refactor: Create clients for github, Jira, git and AI'"
+    )
+    assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
 
 
 def _create_pr(
@@ -200,7 +219,8 @@ def _create_pr(
 
     assert lines[-3].strip() == "Generated with glu"
     assert (
-        lines[-2] == "🚀 Created PR in github/Test-Repo with title feat: Add testing to my CLI app"
+        lines[-2]
+        == "📃 Created PR in github/Test-Repo with title 'feat: Add testing to my CLI app'"
     )
     assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
 

@@ -11,11 +11,16 @@ from github.NamedUser import NamedUser
 from github.PaginatedList import PaginatedList
 from github.PullRequest import PullRequest
 from github.PullRequestReview import PullRequestReview
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 
 from glu import ROOT_DIR
 from tests import TESTS_DATA_DIR
 from tests.utils import load_json
+
+
+@dataclass
+class FakeUser:
+    login: str
 
 
 class FakeGithubClient:
@@ -23,10 +28,6 @@ class FakeGithubClient:
         pass
 
     def get_members(self, repo_name: str) -> list[NamedUser]:
-        @dataclass
-        class FakeUser:
-            login: str
-
         return [FakeUser("teddy"), FakeUser("jack"), FakeUser("peter")]  # type: ignore
 
     def create_pr(
@@ -68,7 +69,6 @@ class FakeGithubClient:
             updated_at: str
             state: str
             draft: bool
-            requested_reviewers: list[NamedUser] = Field(default_factory=list)
 
             def get_commits(self) -> list[Commit]:
                 class FakeCommit(BaseModel):
@@ -125,6 +125,13 @@ class FakeGithubClient:
 
             def mark_ready_for_review(self):
                 pass
+
+            @property
+            def requested_reviewers(self) -> list[NamedUser]:
+                if os.getenv("PR_HAS_NO_REVIEWERS"):
+                    return []
+
+                return [FakeUser("teddy")]  # type: ignore
 
             @property
             def comments(self) -> int:
@@ -215,6 +222,15 @@ class FakeGithubClient:
 
         with open(TESTS_DATA_DIR / "diff_to_main.txt", "r") as f:
             return f.read()
+
+    def update_pr(
+        self,
+        pr: PullRequest,
+        title: str | None,
+        body: str | None,
+        draft: bool | None,
+    ) -> None:
+        pass
 
     @property
     def delete_branch_on_merge(self) -> bool:

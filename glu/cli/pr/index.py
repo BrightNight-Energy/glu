@@ -6,6 +6,7 @@ from glu.cli.pr.create import create_pr
 from glu.cli.pr.list import list_prs as list_prs_core
 from glu.cli.pr.merge import merge_pr
 from glu.cli.pr.open import open_pr as open_pr_core
+from glu.cli.pr.update import update_pr
 from glu.cli.pr.view import view_pr as view_pr_core
 
 app = typer.Typer()
@@ -158,3 +159,51 @@ def view(
     ] = False,
 ):
     view_pr_core(pr_num, repo_name, show_checks)
+
+
+@app.command(short_help="Update a PR with description")
+def update(
+    pr_num: Annotated[int, typer.Argument(help="PR number")],
+    ticket: Annotated[
+        str | None,
+        typer.Option("--ticket", "-t", help="Jira ticket number"),
+    ] = None,
+    project: Annotated[
+        str | None,
+        typer.Option("--project", "-p", help="Jira project (defaults to default Jira project)"),
+    ] = None,
+    draft: Annotated[bool, typer.Option("--draft", "-d", help="Mark as draft PR")] = False,
+    reviewers: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--reviewer",
+            "-r",
+            help="Requested reviewers (accepts multiple values)",
+            show_default=False,
+        ),
+    ] = None,
+    provider: Annotated[
+        str | None,
+        typer.Option(
+            "--provider",
+            "-pr",
+            help="AI model provider",
+        ),
+    ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="AI model",
+        ),
+    ] = None,
+    ready_for_review: Annotated[
+        bool,
+        typer.Option(
+            "--review",
+            help="Move ticket to ready for review",
+        ),
+    ] = False,
+):
+    update_pr(pr_num, ticket, project, draft, reviewers, provider, model, ready_for_review)
