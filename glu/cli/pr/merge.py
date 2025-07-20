@@ -14,6 +14,7 @@ from glu.ai import (
 )
 from glu.config import (
     JIRA_DONE_TRANSITION,
+    PREFERENCES,
 )
 from glu.gh import (
     get_all_from_paginated_list,
@@ -182,7 +183,7 @@ def merge_pr(  # noqa: C901
             if not commit_msg:
                 print_error("No commit message provided")
                 raise typer.Exit(0)
-            commit_title = commit_msg.split("\n\n")[0]
+            commit_title = commit_msg.split("\n\n")[0].strip()
             commit_body = commit_msg.replace(f"{commit_title}\n\n", "", 1).strip()
         case _:
             print_error("No matching choice for commit was provided")
@@ -193,6 +194,9 @@ def merge_pr(  # noqa: C901
         if formatted_ticket and formatted_ticket not in commit_body
         else commit_body
     )
+
+    if PREFERENCES.add_pr_number_on_merge:
+        commit_title += f" (#{pr.number})"
 
     rich.print("[grey70]Merging PR...[/]\n")
     try:
