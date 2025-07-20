@@ -112,6 +112,7 @@ def test_list_prs_only_mine(env_cli, write_config_w_repo_config):
 
 
 def test_view_pr(env_cli, write_config_w_repo_config):
+    env_cli["PR_HAS_NO_REVIEWERS"] = "1"
     child = pexpect.spawn("glu pr view 345", env=env_cli, encoding="utf-8")
 
     child.expect("────╯")
