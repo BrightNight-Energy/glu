@@ -178,7 +178,7 @@ def merge_pr(  # noqa: C901
             commit_body = commit_data.body
             commit_title = commit_data.full_title
         case "Edit manually":
-            commit_msg = typer.edit(summary_commit_message)
+            commit_msg = typer.edit(proposed_commit_message)
             if not commit_msg:
                 print_error("No commit message provided")
                 raise typer.Exit(0)

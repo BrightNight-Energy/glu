@@ -165,7 +165,9 @@ def capitalize_first_word(text: str) -> str:
     return " ".join([splitted[0].capitalize()] + splitted[1:])
 
 
-def print_panel(title: str | Text, content: str | ConsoleRenderable | RichCast) -> None:
+def print_panel(
+    title: str | Text, content: str | ConsoleRenderable | RichCast, border_style: str = "grey70"
+) -> None:
     console = Console()
     console.print(
         Panel(
@@ -173,7 +175,7 @@ def print_panel(title: str | Text, content: str | ConsoleRenderable | RichCast) 
             title=title,
             title_align="left",
             expand=False,
-            border_style="grey70",
+            border_style=border_style,
         )
     )
 
