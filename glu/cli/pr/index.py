@@ -150,7 +150,10 @@ def view(
     show_checks: Annotated[
         bool,
         typer.Option(
-            "--checks", "-m", help="Show CI checks (not enabled by default for performance reasons)"
+            "--checks",
+            "--show-checks",
+            "-c",
+            help="Show CI checks (not enabled by default for performance reasons)",
         ),
     ] = False,
 ):

@@ -64,6 +64,13 @@ def view_pr(  # noqa: C901
         text_with_emojis = replace_emoji(f" {':speech_balloon:'} {pr.comments}")
         renderables.append(Text(text_with_emojis))
 
+    if not pr.mergeable:
+        renderables.append(
+            Text("Mergeability: ", style="grey70").append(
+                pr.mergeable_state, style="bright_white on red"
+            )
+        )
+
     if show_checks:
         relevant_checks = []
         pr_checks = gh.get_pr_checks(pr_num)
