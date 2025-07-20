@@ -1,4 +1,5 @@
 import os
+import re
 
 import rich
 import typer
@@ -9,6 +10,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.validation import Validator
 from rich.console import Console, ConsoleRenderable, RichCast
+from rich.emoji import Emoji
 from rich.panel import Panel
 from rich.text import Text
 from typer import Context
@@ -165,7 +167,9 @@ def capitalize_first_word(text: str) -> str:
     return " ".join([splitted[0].capitalize()] + splitted[1:])
 
 
-def print_panel(title: str | Text, content: str | ConsoleRenderable | RichCast) -> None:
+def print_panel(
+    title: str | Text, content: str | ConsoleRenderable | RichCast, border_style: str = "grey70"
+) -> None:
     console = Console()
     console.print(
         Panel(
@@ -173,7 +177,7 @@ def print_panel(title: str | Text, content: str | ConsoleRenderable | RichCast) 
             title=title,
             title_align="left",
             expand=False,
-            border_style="grey70",
+            border_style=border_style,
         )
     )
 
@@ -187,3 +191,11 @@ def abbreviate_last_name(name: str | None) -> str:
         return name
 
     return f"{splitted[0]} {splitted[1][0]}."
+
+
+def replace_emoji(text: str) -> str:
+    def _replace_emoji(match):
+        emoji_code = match.group(0)
+        return Emoji.replace(emoji_code) or emoji_code  # fallback if not valid
+
+    return re.sub(r":[a-zA-Z0-9_+-]+:", _replace_emoji, text)

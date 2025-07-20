@@ -6,6 +6,7 @@ from glu.cli.pr.create import create_pr
 from glu.cli.pr.list import list_prs as list_prs_core
 from glu.cli.pr.merge import merge_pr
 from glu.cli.pr.open import open_pr as open_pr_core
+from glu.cli.pr.view import view_pr as view_pr_core
 
 app = typer.Typer()
 
@@ -132,3 +133,19 @@ def open_pr(
     ] = None,
 ):
     open_pr_core(pr_num, repo_name)
+
+
+@app.command(short_help="View PR")
+def view(
+    pr_num: Annotated[int, typer.Argument(help="PR number")],
+    repo_name: Annotated[
+        str | None,
+        typer.Option(
+            "--repo",
+            "-r",
+            help="Repo name (defaults to current directory git repository)",
+            show_default=False,
+        ),
+    ] = None,
+):
+    view_pr_core(pr_num, repo_name)
