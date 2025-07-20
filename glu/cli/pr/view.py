@@ -4,15 +4,16 @@ from rich.console import Group
 from rich.markdown import Markdown
 from rich.text import Text
 
-from glu.gh import get_github_client
+from glu.gh import get_check_attrs, get_github_client
 from glu.local import get_git_client
 from glu.utils import print_panel, replace_emoji, suppress_traceback
 
 
 @suppress_traceback
-def view_pr(
+def view_pr(  # noqa: C901
     pr_num: int,
     repo_name: str | None,
+    show_checks: bool,
 ) -> None:
     if not repo_name:
         try:
@@ -58,9 +59,26 @@ def view_pr(
         Text("Reviewers: ", style="grey70") + Text(reviewers, style="dodger_blue1"),
         Text(f"⍿ {pr.head.ref} ({pr.commits})", style="green3"),
     ]
+
     if comments:
         text_with_emojis = replace_emoji(f" {':speech_balloon:'} {pr.comments}")
         renderables.append(Text(text_with_emojis))
+
+    if show_checks:
+        relevant_checks = []
+        pr_checks = gh.get_pr_checks(pr_num)
+        for check in pr_checks:
+            if check.conclusion == "skipped" or check.status == "waiting":
+                continue
+
+            relevant_checks.append(check)
+
+        unique_checks = {check.name: check for check in relevant_checks}
+
+        renderables.append(Text("\nChecks:", style="grey70"))
+        for check_name, check in unique_checks.items():
+            emoji, color = get_check_attrs(check)
+            renderables.append(Text(replace_emoji(f"{emoji} {check_name}"), style=color))
 
     renderable_group = Group(*renderables)  # type: ignore
     print_panel(f"PR #{pr_num}", renderable_group, border_style)

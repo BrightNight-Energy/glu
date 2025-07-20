@@ -147,5 +147,11 @@ def view(
             show_default=False,
         ),
     ] = None,
+    show_checks: Annotated[
+        bool,
+        typer.Option(
+            "--checks", "-m", help="Show CI checks (not enabled by default for performance reasons)"
+        ),
+    ] = False,
 ):
-    view_pr_core(pr_num, repo_name)
+    view_pr_core(pr_num, repo_name, show_checks)
