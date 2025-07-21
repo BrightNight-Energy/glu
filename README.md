@@ -21,23 +21,25 @@ git clone https://github.com/BrightNight-Energy/glu.git
 cd glu
 pip install -e .
 ```
-
-## Usage
-
 After installation, the `glu` command will be available:
 
 ```bash
 glu --help
 ```
 
-### Commands
+## Commands
 
-Glu CLI provides two main command groups: `pr` and `ticket`. They are registered as subcommands of the main CLI:
+Glu CLI provides four main command groups: `init`, `pr`, `ticket`, and `commit`. They are registered as 
+subcommands of the main CLI:
 
 ```bash
+glu init --help
 glu pr --help
 glu ticket --help
+glu commit --help
 ```
+
+### `glu pr`
 
 #### `pr create`
 
@@ -86,6 +88,66 @@ Options:
 > [!WARNING]
 > Currently only squash-merges are supported
 
+#### `pr list`
+
+List pull requests with optional filters:
+
+```bash
+glu pr list [OPTIONS]
+```
+
+Options:
+
+- `--repo, -r TEXT`        Repo name (defaults to current directory git repository)
+- `--only-mine, -m`        Filter PRs to those assigned to me
+- `--no-draft, -d`         Filter PRs to exclude draft
+
+#### `pr open`
+
+Open a PR in the web browser:
+
+```bash
+glu pr open PR_NUM [OPTIONS]
+```
+
+Options:
+
+- `--repo, -r TEXT`        Repo name (defaults to current directory git repository)
+
+#### `pr view`
+
+View details of a PR:
+
+```bash
+glu pr view PR_NUM [OPTIONS]
+```
+
+Options:
+
+- `--repo, -r TEXT`        Repo name (defaults to current directory git repository)
+- `--checks, --show-checks, -c`
+                         Show CI checks (not enabled by default for performance reasons)
+
+#### `pr update`
+
+Update a PR with an updated description and metadata:
+
+```bash
+glu pr update PR_NUM [OPTIONS]
+```
+
+Options:
+
+- `--ticket, -t TEXT`      Jira ticket number
+- `--project, -p TEXT`     Jira project (defaults to default Jira project)
+- `--draft, -d`            Mark as draft PR
+- `--reviewer, -r TEXT`    Requested reviewers (accepts multiple values)
+- `--provider, -pr TEXT`   AI model provider
+- `--model, -m TEXT`       LLM model
+- `--review`               Move ticket to ready for review (defaults to False)
+
+### `glu ticket`
+
 #### `ticket create`
 
 Create a Jira ticket, optionally using AI to generate summary and description:
@@ -110,6 +172,51 @@ Options:
 - `--model, -m TEXT`                 LLM model  
 
 The command also accepts additional JIRA fields via `--<field> <value>`.
+
+#### `ticket list`
+
+List Jira tickets with optional filters:
+
+```bash
+glu ticket list [OPTIONS]
+```
+
+Options:
+
+- `--project, -p TEXT`     Jira project
+- `--only-mine, -m`        Only show my tickets
+- `--status, -s TEXT`      Filter tickets by status (multiple values accepted)
+- `--priority-ordered`     Order by priority (defaults to created date)
+- `--show-closed, -c`      Show closed tickets
+- `--priority, -y TEXT`    Filter tickets by priority (multiple values accepted)
+- `--type, -t TEXT`        Filter tickets by issue type (multiple values accepted)
+- `--in-progress, -i`      Show in progress tickets only
+
+#### `ticket open`
+
+Open a Jira ticket in the web browser:
+
+```bash
+glu ticket open TICKET_NUM [OPTIONS]
+```
+
+Options:
+
+- `--project, -p TEXT`     Jira project
+
+#### `ticket view`
+
+View details of a Jira ticket:
+
+```bash
+glu ticket view TICKET_NUM [OPTIONS]
+```
+
+Options:
+
+- `--project, -p TEXT`     Jira project
+
+### `glu commit`
 
 #### `commit list`
 
@@ -165,10 +272,19 @@ Options:
   - `--jira-server TEXT`            Jira server URL (default: https://jira.atlassian.com)  
   - `--jira-in-progress TEXT`       Jira “in progress” transition name (default: Starting)  
   - `--jira-ready-for-review TEXT`  Jira “ready for review” transition name (default: Ready for review)  
+  - `--jira-done TEXT`              Jira “done” transition name (default: Finished)  
   - `--default-jira-project TEXT`   Default Jira project key  
 
 - **GitHub Config**  
   - `--github-pat TEXT`             GitHub Personal Access Token (required)
+
+**Preferences**  
+  - `--preferred-provider TEXT`     Preferred AI provider (optional)  
+  - `--auto-accept-generated-commits`  Auto accept generated commit messages  
+  - `--generated-with-glu-tag/--no-generated-with-glu-tag`  
+                                   Add a tag to generated PRs and tickets to spread the word about glu! (default: True)  
+  - `--add-pr-number-on-merge/--no-add-pr-number-on-merge`  
+                                   Add the PR number to merge commits (default: True)  
 
 ## Contributing
 

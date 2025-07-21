@@ -86,7 +86,14 @@ def test_init(env_cli):
     assert "Auto accept generated commits?" in auto_accept_generated_commits_menu
     assert "No" in auto_accept_generated_commits_menu
     assert "Yes" in auto_accept_generated_commits_menu
-    child.send(Key.ENTER.value)
+    child.send(Key.ENTER.value)  # no
+
+    child.expect("Yes")
+    add_pr_number_on_merge_menu = get_terminal_text(child.before + child.after)
+    assert "Add PR number to commit title on merge?" in add_pr_number_on_merge_menu
+    assert "No" in add_pr_number_on_merge_menu
+    assert "Yes" in add_pr_number_on_merge_menu
+    child.send(Key.ENTER.value)  # yes
 
     child.expect("✅ Config file written to")
 
