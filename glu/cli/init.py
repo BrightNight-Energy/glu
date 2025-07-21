@@ -93,6 +93,13 @@ def init_config(
     ).execute()
     preferences.auto_accept_generated_commits = auto_accept_generated_commits == "Yes"
 
+    add_pr_number_on_merge = inquirer.select(
+        "Add PR number to commit title on merge? (mirrors default Github behavior)",
+        ["No", "Yes"],
+        default="Yes",
+    ).execute()
+    preferences.add_pr_number_on_merge = add_pr_number_on_merge == "Yes"
+
     preferences.add_generated_with_glu_tag = generated_with_glu_tag
 
     config = Config(env=env, preferences=preferences, repos=repos, jira_issue=jira_config)
