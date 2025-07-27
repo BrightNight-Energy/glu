@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v2.6.0 (2025-07-27)
+
+### Chores
+
+- Update README ([#54](https://github.com/BrightNight-Energy/glu/pull/54),
+  [`39a5cd4`](https://github.com/BrightNight-Energy/glu/commit/39a5cd4a98ae0af1cb237532fc5361c699646e53))
+
+### Features
+
+- Cli(ticket): add search, assignee and reporter filters to list command
+  ([#55](https://github.com/BrightNight-Energy/glu/pull/55),
+  [`19cba06`](https://github.com/BrightNight-Energy/glu/commit/19cba060939b502c4a589cae7f9ae7862bdd4638))
+
+
 ## v2.5.0 (2025-07-20)
 
 ### Features
