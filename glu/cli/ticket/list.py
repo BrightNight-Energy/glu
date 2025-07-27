@@ -12,11 +12,14 @@ from glu.utils import abbreviate_last_name, print_error, print_panel, suppress_t
 @suppress_traceback
 def list_tickets(  # noqa: C901
     project: str | None,
+    search: str | None,
     only_mine: bool,
     statuses: list[str] | None,
     order_by_priority: bool,
     priorities: list[str] | None,
     types: list[str] | None,
+    assignee: str | None,
+    reporter: str | None,
     in_progress_only: bool,
     open: bool,
 ) -> None:
@@ -36,6 +39,11 @@ def list_tickets(  # noqa: C901
     issue_filters = [f"project={jira_project}"]
     if only_mine:
         issue_filters.append("assignee = currentUser()")
+    elif assignee:
+        issue_filters.append(f'assignee="{assignee}"')
+
+    if reporter:
+        issue_filters.append(f'reporter="{reporter}"')
 
     if statuses:
         issue_filters.append(f"status IN ({','.join(statuses)})")
@@ -51,6 +59,9 @@ def list_tickets(  # noqa: C901
     if priorities:
         issue_filters.append(f"priority IN ({','.join(priorities)})")
 
+    if search:
+        issue_filters.append(f'text ~ "{search}"')
+
     order = "priority" if order_by_priority else "created"
     issue_filter = f"{' and '.join(issue_filters)} order by {order} desc"
 
@@ -58,6 +69,7 @@ def list_tickets(  # noqa: C901
 
     if not issues:
         rich.print("No issues found")
+        return
 
     ticket_table = Table(
         Column(width=2),

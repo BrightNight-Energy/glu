@@ -77,6 +77,10 @@ def create(
 @app.command(name="list", short_help="List Jira tickets")
 def list_tickets(
     project: Annotated[str | None, typer.Option("--project", "-p", help="Jira project")] = None,
+    search: Annotated[
+        str | None,
+        typer.Option("--search", "-q", help="Filter by text", show_default=False),
+    ] = None,
     only_mine: Annotated[
         bool,
         typer.Option("--only-mine", "-m", help="Only show my tickets"),
@@ -124,6 +128,24 @@ def list_tickets(
             show_default=False,
         ),
     ] = None,
+    assignee: Annotated[
+        str | None,
+        typer.Option(
+            "--assignee",
+            "-a",
+            help="Filter by assignee",
+            show_default=False,
+        ),
+    ] = None,
+    reporter: Annotated[
+        str | None,
+        typer.Option(
+            "--reporter",
+            "-r",
+            help="Filter by reporter",
+            show_default=False,
+        ),
+    ] = None,
     in_progress_only: Annotated[
         bool,
         typer.Option(
@@ -135,11 +157,14 @@ def list_tickets(
 ):
     list_tickets_core(
         project,
+        search,
         only_mine,
         statuses,
         order_by_priority,
         priorities,
         types,
+        assignee,
+        reporter,
         in_progress_only,
         open=not show_closed,
     )

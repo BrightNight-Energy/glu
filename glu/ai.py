@@ -169,6 +169,7 @@ def generate_description(
     Be concise and informative about the contents of the PR, relevant to someone
     reviewing the PR. Don't describe changes to testing, unless testing is the main
     purpose for the PR. Leave any Jira ticket placeholder as it was in the template.
+    Leave any checkmarks as they were for the user to complete.
     {title_prompt}Write the description using the following template:
     {template}
 
