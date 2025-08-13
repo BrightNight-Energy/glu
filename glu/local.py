@@ -109,7 +109,7 @@ class GitClient:
             raise typer.Exit(1) from err
 
     def push(self) -> None:
-        # If we are pushing, we need to have upstream set.
+        # Make UX better when using git push after glu pr create
         try:
             branch_name = self._repo.active_branch.name
             tracking = self._repo.active_branch.tracking_branch()
