@@ -68,7 +68,7 @@ def create_pr(  # noqa: C901
 
                 checkout_to_branch(git, chat_client, gh.default_branch, commit_data.message)
                 latest_commit = git.create_commit(commit_data.message)
-                git.push(set_upstream_if_unset=(git.current_branch != gh.default_branch))
+                git.push()
             case "Commit and push with manual message":
                 git.create_commit("chore: [dry run commit]", dry_run=True)
                 commit_message = typer.edit("")
@@ -78,7 +78,7 @@ def create_pr(  # noqa: C901
 
                 checkout_to_branch(git, chat_client, gh.default_branch, commit_message)
                 latest_commit = git.create_commit(commit_message)
-                git.push(set_upstream_if_unset=(git.current_branch != gh.default_branch))
+                git.push()
             case "Proceed anyway":
                 checkout_to_branch(git, chat_client, gh.default_branch, commit_message=None)
             case _:
@@ -86,14 +86,14 @@ def create_pr(  # noqa: C901
                 raise typer.Exit(1)
 
     if not git.confirm_branch_exists_in_remote():
-        git.push(set_upstream_if_unset=(git.current_branch != gh.default_branch))
+        git.push()
 
     if not git.remote_branch_in_sync():
         confirm_push = typer.confirm(
             "Local branch is not up to date with remote. Push to remote now?"
         )
         if confirm_push:
-            git.push(set_upstream_if_unset=(git.current_branch != gh.default_branch))
+            git.push()
 
     jira = get_jira_client()
 

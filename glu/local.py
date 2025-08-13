@@ -108,11 +108,17 @@ class GitClient:
             rich.print(err)
             raise typer.Exit(1) from err
 
-    def push(self, set_upstream_if_unset: bool = False) -> None:
+    def push(self) -> None:
+        # If we are pushing, we need to have upstream set.
         try:
             branch_name = self._repo.active_branch.name
             tracking = self._repo.active_branch.tracking_branch()
-            if set_upstream_if_unset and tracking is None:
+            if tracking is None:
+                rich.print(f"[grey70]Upstream not set; setting to origin/{branch_name}.[/]")
+                rich.print(
+                    "[grey70]To set a tracking branch with a different name, create the remote "
+                    "branch manually and run: git branch -u <origin/other-branch-name>[/]"
+                )
                 self._repo.git.push("--set-upstream", "origin", branch_name)
             else:
                 self._repo.git.push("origin", branch_name)
