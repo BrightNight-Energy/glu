@@ -63,7 +63,7 @@ class FakeGitClient:
             "- Add testing through pexpect and pytest\n- Added very many good tests",
         )
 
-    def push(self) -> None:
+    def push(self, set_upstream_if_unset: bool = False) -> None:
         os.environ["IS_REMOTE_BRANCH_IN_SYNC"] = "1"
         pass
 

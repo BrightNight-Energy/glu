@@ -108,9 +108,14 @@ class GitClient:
             rich.print(err)
             raise typer.Exit(1) from err
 
-    def push(self) -> None:
+    def push(self, set_upstream_if_unset: bool = False) -> None:
         try:
-            self._repo.git.push("origin", self._repo.active_branch.name)
+            branch_name = self._repo.active_branch.name
+            tracking = self._repo.active_branch.tracking_branch()
+            if set_upstream_if_unset and tracking is None:
+                self._repo.git.push("--set-upstream", "origin", branch_name)
+            else:
+                self._repo.git.push("origin", branch_name)
         except GitCommandError as err:
             rich.print(err)
             raise typer.Exit(1) from err
