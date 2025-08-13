@@ -2,6 +2,12 @@
 
 <!-- version list -->
 
+## v2.7.0 (2025-08-13)
+
+### Features
+
+- pr(create): set upstream for non-base local branches when creating a PR to ensure smooth subsequent pushes/pulls.
+
 ## v2.6.0 (2025-07-27)
 
 ### Chores
