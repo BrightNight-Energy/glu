@@ -1,0 +1,37 @@
+from unittest.mock import MagicMock
+
+from glu.local import GitClient
+
+
+def _make_client(branch_name: str, has_tracking: bool):
+    # TODO: GitClient() returns the fake client in tests, but just to be safe do this?
+    client = object.__new__(GitClient)
+
+    repo = MagicMock()
+
+    active_branch = MagicMock()
+    active_branch.name = branch_name
+    active_branch.tracking_branch.return_value = MagicMock() if has_tracking else None
+    repo.active_branch = active_branch
+
+    git = MagicMock()
+    repo.git = git
+
+    client._repo = repo
+    return client, repo, git
+
+
+def test_push_sets_upstream_when_no_tracking():
+    client, _, git = _make_client(branch_name="push-test", has_tracking=False)
+
+    client.push()
+
+    git.push.assert_called_once_with("--set-upstream", "origin", "push-test")
+
+
+def test_push_without_upstream_flag_when_tracking_set():
+    client, _, git = _make_client(branch_name="push-test", has_tracking=True)
+
+    client.push()
+
+    git.push.assert_called_once_with("origin", "push-test")
