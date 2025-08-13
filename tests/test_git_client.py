@@ -5,19 +5,23 @@ from glu.local import GitClient
 
 def _make_client(branch_name: str, has_tracking: bool):
     # TODO: GitClient() returns the fake client in tests, but just to be safe do this?
+    # Client has a _repo attribute
     client = object.__new__(GitClient)
 
+    # _repo has a git attribute and an active branch attribute
     repo = MagicMock()
-
+    git = MagicMock()
     active_branch = MagicMock()
-    active_branch.name = branch_name
-    active_branch.tracking_branch.return_value = MagicMock() if has_tracking else None
+
+    # Assign mock attributes
+    client._repo = repo
+    repo.git = git
     repo.active_branch = active_branch
 
-    git = MagicMock()
-    repo.git = git
+    # Active branch has a name attribute and a tracking_branch method
+    active_branch.name = branch_name
+    active_branch.tracking_branch.return_value = MagicMock() if has_tracking else None
 
-    client._repo = repo
     return client, repo, git
 
 
