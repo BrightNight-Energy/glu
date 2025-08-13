@@ -38,7 +38,7 @@ def create_pr(  # noqa: C901
     try:
         git = get_git_client()
     except InvalidGitRepositoryError as err:
-        print_error("Not valid a git repository")
+        print_error("Not a valid git repository")
         raise typer.Exit(1) from err
 
     chat_client = get_ai_client(model)
