@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.7.0 (2025-08-15)
+
+### Features
+
+- Added logic to set the upstream branch if unset
+  ([#56](https://github.com/BrightNight-Energy/glu/pull/56),
+  [`6f601bf`](https://github.com/BrightNight-Energy/glu/commit/6f601bf9e19febffc8a5ba84a18c000856d14d8d))
+
+
 ## v2.6.0 (2025-07-27)
 
 ### Chores
