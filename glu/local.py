@@ -109,8 +109,14 @@ class GitClient:
             raise typer.Exit(1) from err
 
     def push(self) -> None:
+        # Make UX better when using git push after glu pr create by setting upstream if unset
         try:
-            self._repo.git.push("origin", self._repo.active_branch.name)
+            branch_name = self._repo.active_branch.name
+            tracking = self._repo.active_branch.tracking_branch()
+            if tracking is None:
+                self._repo.git.push("--set-upstream", "origin", branch_name)
+            else:
+                self._repo.git.push("origin", branch_name)
         except GitCommandError as err:
             rich.print(err)
             raise typer.Exit(1) from err
