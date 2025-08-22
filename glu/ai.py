@@ -30,7 +30,7 @@ from glu.models import (
     PRDescriptionGeneration,
     TicketGeneration,
 )
-from glu.utils import print_error, remove_json_backticks
+from glu.utils import clean_json_for_parsing, print_error
 
 
 class ChatClient:
@@ -185,7 +185,7 @@ def generate_description(
     ticket_placeholder_match = re.search(ticket_placeholder_pattern, template_text)
 
     try:
-        parsed = json.loads(remove_json_backticks(response))
+        parsed = json.loads(clean_json_for_parsing(response))
         pr_gen = PRDescriptionGeneration.model_validate(parsed | {"generate_title": generate_title})
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
@@ -291,7 +291,7 @@ def generate_ticket(
     response = chat_client.run(prompt)
 
     try:
-        parsed = json.loads(remove_json_backticks(response))
+        parsed = json.loads(clean_json_for_parsing(response))
         return TicketGeneration.model_validate(parsed | {"issuetype": issuetype})
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
@@ -380,7 +380,7 @@ def generate_commit_message(
     response = chat_client.run(prompt)
 
     try:
-        parsed = json.loads(remove_json_backticks(response))
+        parsed = json.loads(clean_json_for_parsing(response))
         return CommitGeneration.model_validate(parsed)
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):
@@ -462,7 +462,7 @@ def generate_final_commit_message(
     response = chat_client.run(prompt)
 
     try:
-        parsed = json.loads(remove_json_backticks(response))
+        parsed = json.loads(clean_json_for_parsing(response))
         return CommitGeneration.model_validate(parsed | {"formatted_ticket": formatted_ticket})
     except (JSONDecodeError, ValidationError) as err:
         if isinstance(err, JSONDecodeError):

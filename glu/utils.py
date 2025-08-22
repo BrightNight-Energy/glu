@@ -137,8 +137,8 @@ def prompt_or_edit(prompt: str, allow_skip: bool = False) -> str:
     return output
 
 
-def remove_json_backticks(text: str) -> str:
-    return text.replace("```json", "").replace("```", "")
+def clean_json_for_parsing(text: str) -> str:
+    return text.replace("```json", "").replace("```", "").replace("\n", "\\n")
 
 
 def suppress_traceback(func):
