@@ -198,11 +198,11 @@ def get_pr_approval_status(
 ) -> Literal["approved", "changes_requested"] | None:
     reviews = get_all_from_paginated_list(paginated_reviews)
 
-    if any(review.state == "CHANGES_REQUESTED" for review in reviews):
-        return "changes_requested"
-
     if any(review.state == "APPROVED" for review in reviews):
         return "approved"
+
+    if any(review.state == "CHANGES_REQUESTED" for review in reviews):
+        return "changes_requested"
 
     return None
 
