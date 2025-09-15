@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v2.7.1 (2025-09-15)
+
+### Bug Fixes
+
+- Fix commit generation parsing when type is contained inside title
+  ([#58](https://github.com/BrightNight-Energy/glu/pull/58),
+  [`8d3033e`](https://github.com/BrightNight-Energy/glu/commit/8d3033ed4b3431602140c50020513c6431cd924b))
+
+- Prioritize approved status over change requests in get_pr_approval_status
+  ([#57](https://github.com/BrightNight-Energy/glu/pull/57),
+  [`448ede9`](https://github.com/BrightNight-Energy/glu/commit/448ede90e27700331945b3876d8fbc78c987c4d1))
+
+
 ## v2.7.0 (2025-08-15)
 
 ### Features
