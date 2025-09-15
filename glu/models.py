@@ -60,8 +60,8 @@ class CommitGeneration(BaseModel):
         if self.title.count(":") > 1:
             raise ValueError("The char ':' should never appear more than once in the title.")
 
-        if self.type in self.title:
-            self.title = self.title.split(":")[1].strip()
+        if f"{self.type}:" in self.title:
+            self.title = self.title.replace(f"{self.type}:", "").strip()
 
         self.title = capitalize_first_word(self.title)
         return self
