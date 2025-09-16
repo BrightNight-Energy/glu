@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.7.2 (2025-09-16)
+
+### Bug Fixes
+
+- Upgrade jira package to fix endpoint depreciations
+  ([#59](https://github.com/BrightNight-Energy/glu/pull/59),
+  [`5456dad`](https://github.com/BrightNight-Energy/glu/commit/5456dad3e209289b3018c86fd373d0100a6d9061))
+
+
 ## v2.7.1 (2025-09-15)
 
 ### Bug Fixes
