@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.7.3 (2025-09-25)
+
+### Bug Fixes
+
+- **commit-gen**: Fix double entry of type prefix in commit title when generating with AI
+  ([#60](https://github.com/BrightNight-Energy/glu/pull/60),
+  [`e3a956c`](https://github.com/BrightNight-Energy/glu/commit/e3a956c616330934647c013b08c1b45ea2d7f777))
+
+
 ## v2.7.2 (2025-09-16)
 
 ### Bug Fixes
