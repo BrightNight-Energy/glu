@@ -21,7 +21,10 @@ class FakeChatClient:
         if "adding testing" in msg:
             return json.dumps(load_json("ai_ticket.json"))
         if "Provide a commit message for the following diff" in msg:
-            return json.dumps(load_json("commit_message.json"))
+            cmt_msg = load_json("commit_message.json")
+            if os.getenv("IS_COMMIT_MSG_TITLE_SCOPED"):
+                cmt_msg["title"] = f"refactor(service):{cmt_msg['title'].replace('refactor:', '')}"
+            return json.dumps(cmt_msg)
         if "Provide the issue type for a Jira ticket" in msg:
             return "Chore"
         if "Provide a description and summary for a Jira" in msg:

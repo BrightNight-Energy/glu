@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -60,8 +61,11 @@ class CommitGeneration(BaseModel):
         if self.title.count(":") > 1:
             raise ValueError("The char ':' should never appear more than once in the title.")
 
-        if f"{self.type}:" in self.title:
-            self.title = self.title.replace(f"{self.type}:", "").strip()
+        type_prefix_pattern = r"^([a-zA-Z0-9_-]+(?:\([^)]+\))?):\s+(.+)"
+        if match := re.match(type_prefix_pattern, self.title):
+            type_prefix = match.group(1)
+            self.title = self.title.replace(f"{type_prefix}:", "").strip()
+            self.type = type_prefix
 
         self.title = capitalize_first_word(self.title)
         return self
