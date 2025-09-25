@@ -15,6 +15,29 @@ def test_create_pr_full_flow_w_ai(write_config_w_repo_config, env_cli):
     _create_pr(child, is_git_dirty=True)
 
 
+def test_create_pr_w_commit_generation(write_config_w_repo_config, env_cli):
+    env_cli["IS_GIT_DIRTY"] = "1"
+    env_cli["IS_COMMIT_MSG_TITLE_SCOPED"] = "1"
+    child = pexpect.spawn("glu pr create", env=env_cli, encoding="utf-8")
+
+    child.expect("Select provider:")
+    child.send(Key.ENTER.value)  # select first provider
+    child.expect("Proceed anyway")
+
+    text = get_terminal_text(child.before + child.after)
+    assert "You have uncommitted changes" in text
+    assert "Commit and push with AI message" in text
+    assert "Commit and push with manual message" in text
+    assert "Proceed anyway" in text
+    child.send(Key.ENTER.value)  # ai message
+
+    child.expect("Exit")
+
+    proposed_commit_text = get_terminal_text(child.before + child.after)
+    assert "Proposed commit message" in proposed_commit_text
+    assert "refactor(service): Unify client abstractions for ai" in proposed_commit_text
+
+
 def test_create_pr_w_no_ticket(write_config_w_repo_config, env_cli):
     env_cli["IS_GIT_DIRTY"] = "1"
     env_cli["IS_JIRA_TICKET_IN_TO_DO"] = "1"
