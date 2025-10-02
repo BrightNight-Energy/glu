@@ -1,0 +1,14 @@
+[
+  "feat",
+  "fix",
+  "docs",
+  "style",
+  "refactor",
+  "test",
+  "chore",
+  "revert",
+  "build",
+  "ci",
+  "perf",
+  "other"
+]
