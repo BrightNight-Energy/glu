@@ -188,16 +188,7 @@ def generate_description(
         parsed = json.loads(remove_json_backticks(response))
         pr_gen = PRDescriptionGeneration.model_validate(parsed | {"generate_title": generate_title})
     except (JSONDecodeError, ValidationError) as err:
-        if isinstance(err, JSONDecodeError):
-            error = (
-                f"Your response was not in valid JSON format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}"
-            )
-        else:
-            error = (
-                f"Your response was in invalid format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}. Error: {err}"
-            )
+        error = _format_error(err, response_format, response)
 
         return generate_description(
             chat_client, template, repo_name, diff, body, generate_title, error, retry + 1
@@ -294,16 +285,7 @@ def generate_ticket(
         parsed = json.loads(remove_json_backticks(response))
         return TicketGeneration.model_validate(parsed | {"issuetype": issuetype})
     except (JSONDecodeError, ValidationError) as err:
-        if isinstance(err, JSONDecodeError):
-            error = (
-                f"Your response was not in valid JSON format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}"
-            )
-        else:
-            error = (
-                f"Your response was in invalid format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}. Error: {err}"
-            )
+        error = _format_error(err, response_format, response)
 
         return generate_ticket(
             chat_client,
@@ -383,17 +365,7 @@ def generate_commit_message(
         parsed = json.loads(remove_json_backticks(response))
         return CommitGeneration.model_validate(parsed)
     except (JSONDecodeError, ValidationError) as err:
-        if isinstance(err, JSONDecodeError):
-            error = (
-                f"Your response was not in valid JSON format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}"
-            )
-        else:
-            error = (
-                f"Your response was in invalid format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}. Error: {err}"
-            )
-
+        error = _format_error(err, response_format, response)
         return generate_commit_message(chat_client, diff, branch_name, error, retry + 1)
 
 
@@ -423,7 +395,9 @@ def generate_final_commit_message(
     retry: int = 0,
 ) -> CommitGeneration:
     if retry > 2:
-        print_error(f"Failed to generate commit after {retry} attempts")
+        print_error(
+            f"Failed to generate commit after {retry} attempts ({error or 'unknown error'})"
+        )
         raise typer.Exit(1)
 
     response_format = {
@@ -453,7 +427,7 @@ def generate_final_commit_message(
 
     PR diff:
     {
-        _trim_text_to_fit_token_limit(pr_diff, chat_client.model)
+        _trim_text_to_fit_token_limit(pr_diff, chat_client.model, buffer_tokens=2500)
         if pr_diff
         else "[Diff too large to display]"
     }
@@ -465,16 +439,7 @@ def generate_final_commit_message(
         parsed = json.loads(remove_json_backticks(response))
         return CommitGeneration.model_validate(parsed | {"formatted_ticket": formatted_ticket})
     except (JSONDecodeError, ValidationError) as err:
-        if isinstance(err, JSONDecodeError):
-            error = (
-                f"Your response was not in valid JSON format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}"
-            )
-        else:
-            error = (
-                f"Your response was in invalid format. Make sure it is in format of: "
-                f"{json.dumps(response_format)}. Error: {err}"
-            )
+        error = _format_error(err, response_format, response)
 
         return generate_final_commit_message(
             chat_client,
@@ -528,3 +493,24 @@ def _generate_issuetype(
 
     error = f"Invalid issuetype: {response}. Should be one of: {issuetypes_str}."
     return _generate_issuetype(chat_client, issuetypes, context, error, retry + 1)
+
+
+def _format_error(
+    err: JSONDecodeError | ValidationError, response_format: dict, response: str | None
+) -> str:
+    if isinstance(err, JSONDecodeError):
+        if not response:
+            return (
+                "The AI generated response was empty. "
+                "Try a different model if this problem persists."
+            )
+
+        return (
+            f"Your response was not in valid JSON format. Make sure it is in format of: "
+            f"{json.dumps(response_format)}"
+        )
+
+    return (
+        f"Your response was in invalid format. Make sure it is in format of: "
+        f"{json.dumps(response_format)}. Error: {err}"
+    )

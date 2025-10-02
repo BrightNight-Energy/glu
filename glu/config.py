@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from glu.models import ChatProvider
 
 DEFAULT_MODELS: dict[ChatProvider, str] = {
-    "OpenAI": "o4-mini",
+    "OpenAI": "gpt-5-mini",
     "Gemini": "gemini-2.0-flash",
     "Anthropic": "claude-sonnet-4-0",
     "xAI": "grok-3-mini-fast",
