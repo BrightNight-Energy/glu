@@ -109,7 +109,7 @@ def test_init(env_cli):
             "github_pat": "dfj2k39f04",
             "openai_config": {
                 "api_key": "adf23hggj9400h",
-                "model": "o4-mini",
+                "model": "gpt-5-mini",
                 "provider": "OpenAI",
             },
         },
