@@ -235,6 +235,9 @@ MODEL_TOKEN_LIMITS = {
     "gpt-4.1": 1_047_576,
     "gpt-4.1-nano": 1_047_576,
     "gpt-4.1-mini": 1_047_576,
+    "gpt-5": 400_000,
+    "gpt-5-mini": 400_000,
+    "gpt-5-nano": 400_000,
     # === Anthropic (Claude) === https://docs.anthropic.com/en/docs/about-claude/models/overview
     "claude-1": 100000,
     "claude-2": 100000,
@@ -248,6 +251,7 @@ MODEL_TOKEN_LIMITS = {
     "claude-3-7-sonnet-20250219": 200_000,
     "claude-3-5-sonnet-20241022": 200_000,
     "claude-3-5-haiku-20241022": 200_000,
+    "claude-sonnet-4-5": 200_000,
     # === Google (Gemini) === https://ai.google.dev/gemini-api/docs/models
     "gemini-pro": 32000,
     "gemini-pro-vision": 32000,
@@ -270,4 +274,8 @@ MODEL_TOKEN_LIMITS = {
     "grok-3-fast": 131072,
     "grok-3-mini": 131072,
     "grok-3-mini-fast": 131072,
+    "grok-4-0709": 256_000,
+    "grok-code-fast-1": 256_000,
+    "grok-4-fast-reasoning": 2_000_000,
+    "grok-4-fast-non-reasoning": 2_000_000,
 }
