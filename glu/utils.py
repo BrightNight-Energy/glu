@@ -1,5 +1,7 @@
+import json
 import os
 import re
+from pathlib import Path
 
 import rich
 import typer
@@ -14,6 +16,8 @@ from rich.emoji import Emoji
 from rich.panel import Panel
 from rich.text import Text
 from typer import Context
+
+from glu import ROOT_DIR
 
 
 def get_kwargs(ctx: Context) -> dict[str, str | bool]:
@@ -199,3 +203,8 @@ def replace_emoji(text: str) -> str:
         return Emoji.replace(emoji_code) or emoji_code  # fallback if not valid
 
     return re.sub(r":[a-zA-Z0-9_+-]+:", _replace_emoji, text)
+
+
+def load_json(path: str | Path) -> dict:
+    with open(ROOT_DIR / "glu" / "data" / path, "r") as f:
+        return json.load(f)

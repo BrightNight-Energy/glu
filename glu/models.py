@@ -5,7 +5,7 @@ from typing import Literal
 from github.NamedUser import NamedUser
 from pydantic import BaseModel, model_validator
 
-from glu.utils import capitalize_first_word
+from glu.utils import capitalize_first_word, load_json
 
 ChatProvider = Literal["OpenAI", "Glean", "Gemini", "Anthropic", "xAI", "Ollama"]
 
@@ -66,6 +66,15 @@ class CommitGeneration(BaseModel):
             type_prefix = match.group(1)
             self.title = self.title.replace(f"{type_prefix}:", "").strip()
             self.type = type_prefix
+
+        acceptable_commit_types = load_json("conventional_commit_types.json")
+        if not any(
+            self.type.startswith(acceptable_type) for acceptable_type in acceptable_commit_types
+        ):
+            raise ValueError(
+                f"Unknown commit type: {self.type}. "
+                f"Make sure commit type is one of {', '.join(acceptable_commit_types)}."
+            )
 
         self.title = capitalize_first_word(self.title)
         return self
