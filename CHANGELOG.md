@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v2.7.4 (2025-10-04)
+
+### Bug Fixes
+
+- Switch default OpenAI model to gpt-5-mini to fix empty responses with o4-mini
+  ([#61](https://github.com/BrightNight-Energy/glu/pull/61),
+  [`8ef8cfb`](https://github.com/BrightNight-Energy/glu/commit/8ef8cfb6eed89c3848c861d57094c9cdd0e0b1d4))
+
+- Validate commit type against conventional_commit_types.json
+  ([#62](https://github.com/BrightNight-Energy/glu/pull/62),
+  [`3a1cb0e`](https://github.com/BrightNight-Energy/glu/commit/3a1cb0ea841ed41009f65e997509a16906b27426))
+
+
 ## v2.7.3 (2025-09-25)
 
 ### Bug Fixes
