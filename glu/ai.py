@@ -171,7 +171,7 @@ def generate_description(
     purpose for the PR. Leave any Jira ticket placeholder as it was in the template.
     Leave any checkmarks as they were for the user to complete.
     {title_prompt}Write the description using the following template:
-    {template}
+    {template_text}
 
     PR body:
     {body or "[None provided]"}
