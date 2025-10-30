@@ -2,6 +2,18 @@
 
 <!-- version list -->
 
+## v2.7.5 (2025-10-30)
+
+### Bug Fixes
+
+- Disallow '/' character in commit type ([#63](https://github.com/BrightNight-Energy/glu/pull/63),
+  [`470eb89`](https://github.com/BrightNight-Energy/glu/commit/470eb89210e5516e252687da380819a6e793a2f1))
+
+- **ai**: Use template_text placeholder in generate_description prompt
+  ([#64](https://github.com/BrightNight-Energy/glu/pull/64),
+  [`ad379d3`](https://github.com/BrightNight-Energy/glu/commit/ad379d38a3c8c296b50acf69d11432f6b303fc0a))
+
+
 ## v2.7.4 (2025-10-04)
 
 ### Bug Fixes
