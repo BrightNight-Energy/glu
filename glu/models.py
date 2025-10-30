@@ -76,6 +76,9 @@ class CommitGeneration(BaseModel):
                 f"Make sure commit type is one of {', '.join(acceptable_commit_types)}."
             )
 
+        if "/" in self.type:
+            raise ValueError("Commit type should not contain the characters: /")
+
         self.title = capitalize_first_word(self.title)
         return self
 
