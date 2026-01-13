@@ -205,5 +205,23 @@ def update(
             help="Move ticket to ready for review",
         ),
     ] = False,
+    skip_generation: Annotated[
+        bool,
+        typer.Option(
+            "--skip-generation",
+            "-s",
+            help="Skip description generation",
+        ),
+    ] = False,
 ):
-    update_pr(pr_num, ticket, project, draft, reviewers, provider, model, ready_for_review)
+    update_pr(
+        pr_num,
+        ticket,
+        project,
+        draft,
+        reviewers,
+        provider,
+        model,
+        ready_for_review,
+        skip_generation,
+    )

@@ -18,11 +18,12 @@ from glu.jira import (
     search_and_prompt_for_jira_ticket,
 )
 from glu.local import get_git_client
+from glu.models import PRDescriptionGeneration
 from glu.utils import add_generated_with_glu_tag, print_error, suppress_traceback
 
 
 @suppress_traceback
-def update_pr(
+def update_pr(  # noqa: C901
     number: int,
     ticket: str | None,
     project: str | None,
@@ -31,16 +32,13 @@ def update_pr(
     provider: str | None,
     model: str | None,
     ready_for_review: bool,
+    skip_generation: bool,
 ) -> None:
     try:
         git = get_git_client()
     except InvalidGitRepositoryError as err:
         print_error("Not valid a git repository")
         raise typer.Exit(1) from err
-
-    chat_client = get_ai_client(model)
-    chat_provider = prompt_for_chat_provider(chat_client, provider)
-    chat_client.set_chat_model(chat_provider)
 
     gh = get_github_client(git.repo_name)
 
@@ -54,35 +52,46 @@ def update_pr(
         gh, reviewers, git.repo_name, draft or bool(pr.requested_reviewers)
     )
 
-    pr_template = gh.get_contents(".github/pull_request_template.md")
-    pr_diff = gh.get_pr_diff(number)
-    rich.print("[grey70]Generating description...[/]")
-    pr_gen = generate_description(
-        chat_client, pr_template, git.repo_name, pr_diff, pr.body, generate_title=True
-    )
+    pr_gen: PRDescriptionGeneration | None = None
+    generated_pr_description: str | None = None
+    if not skip_generation:
+        chat_client = get_ai_client(model)
+        chat_provider = prompt_for_chat_provider(chat_client, provider)
+        chat_client.set_chat_model(chat_provider)
 
-    formatted_ticket = search_and_prompt_for_jira_ticket(jira_project, ticket, text=pr.body)
+        rich.print("[grey70]Generating description...[/]")
 
-    pr_description = pr_gen.description
-    if formatted_ticket:
-        pr_description = add_jira_key_to_pr_description(pr_description, formatted_ticket)
-    if PREFERENCES.add_generated_with_glu_tag:
-        pr_description = add_generated_with_glu_tag(pr_description)
+        pr_template = gh.get_contents(".github/pull_request_template.md")
+        pr_diff = gh.get_pr_diff(number)
+
+        pr_gen = generate_description(
+            chat_client, pr_template, git.repo_name, pr_diff, pr.body, generate_title=True
+        )
+
+        formatted_ticket = search_and_prompt_for_jira_ticket(jira_project, ticket, text=pr.body)
+
+        pr_description = pr_gen.description
+        if formatted_ticket:
+            pr_description = add_jira_key_to_pr_description(pr_description, formatted_ticket)
+        if PREFERENCES.add_generated_with_glu_tag:
+            pr_description = add_generated_with_glu_tag(pr_description)
+        generated_pr_description = pr_description
 
     gh.update_pr(
         pr,
-        pr_gen.title,
-        body=pr_description,
+        pr_gen.title if pr_gen else None,
+        body=generated_pr_description,
         draft=draft,
     )
 
     if selected_reviewers:
         gh.add_reviewers_to_pr(pr, selected_reviewers)
 
-    rich.print(f"\n[grey70]{pr_description}[/]\n")
+    if generated_pr_description:
+        rich.print(f"\n[grey70]{generated_pr_description}[/]\n")
     rich.print(
         f":page_facing_up: Updated PR in [blue]{git.repo_name}[/] "
-        f"with title [bold green]'{pr_gen.title}'[/]"
+        f"with title [bold green]'{pr_gen.title if pr_gen else pr.title}'[/]"
     )
     rich.print(f"[dark violet]https://github.com/{git.repo_name}/pull/{number}[/]")
 

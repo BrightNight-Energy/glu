@@ -169,6 +169,20 @@ def test_update_pr(env_cli, write_config_w_repo_config):
     assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
 
 
+def test_update_pr_no_generation(env_cli, write_config_w_repo_config):
+    child = pexpect.spawn("glu pr update 353 -s", env=env_cli, encoding="utf-8")
+
+    child.expect(re.compile(r"https://github\.com/github/Test-Repo/pull/\d+"))
+    text = get_terminal_text(child.before + child.after).strip()
+    lines = text.splitlines()
+
+    assert (
+        " ".join(lines[:2]) == "📄 Updated PR in github/Test-Repo with title "
+        "'fix: fix ticket not being properly added to pr descriptions'"
+    )
+    assert "https://github.com/github/Test-Repo/pull/" in lines[-1]
+
+
 def _create_pr(
     child: pexpect.spawn,
     is_git_dirty: bool = False,
