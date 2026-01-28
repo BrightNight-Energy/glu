@@ -213,6 +213,14 @@ def update(
             help="Skip description generation",
         ),
     ] = False,
+    skip_title_update: Annotated[
+        bool,
+        typer.Option(
+            "--skip-title-update",
+            "-st",
+            help="Skip title update",
+        ),
+    ] = False,
 ):
     update_pr(
         pr_num,
@@ -224,4 +232,5 @@ def update(
         model,
         ready_for_review,
         skip_generation,
+        skip_title_update,
     )

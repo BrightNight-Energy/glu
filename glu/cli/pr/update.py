@@ -33,6 +33,7 @@ def update_pr(  # noqa: C901
     model: str | None,
     ready_for_review: bool,
     skip_generation: bool,
+    skip_title_update: bool,
 ) -> None:
     try:
         git = get_git_client()
@@ -65,7 +66,12 @@ def update_pr(  # noqa: C901
         pr_diff = gh.get_pr_diff(number)
 
         pr_gen = generate_description(
-            chat_client, pr_template, git.repo_name, pr_diff, pr.body, generate_title=True
+            chat_client,
+            pr_template,
+            git.repo_name,
+            pr_diff,
+            pr.body,
+            generate_title=not skip_title_update,
         )
 
         formatted_ticket = search_and_prompt_for_jira_ticket(jira_project, ticket, text=pr.body)
@@ -91,7 +97,7 @@ def update_pr(  # noqa: C901
         rich.print(f"\n[grey70]{generated_pr_description}[/]\n")
     rich.print(
         f":page_facing_up: Updated PR in [blue]{git.repo_name}[/] "
-        f"with title [bold green]'{pr_gen.title if pr_gen else pr.title}'[/]"
+        f"with title [bold green]'{pr_gen.title if pr_gen and pr_gen.title else pr.title}'[/]"
     )
     rich.print(f"[dark violet]https://github.com/{git.repo_name}/pull/{number}[/]")
 
