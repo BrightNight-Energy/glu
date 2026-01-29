@@ -65,10 +65,12 @@ class GithubClient:
         pr: PullRequest,
         title: str | None,
         body: str | None,
-        draft: bool | None,
+        draft: bool,
     ) -> None:
         if draft and not pr.draft:
             pr.convert_to_draft()
+        elif not draft and pr.draft:
+            pr.mark_ready_for_review()
 
         pr.edit(title or NotSet, body or NotSet)
 
