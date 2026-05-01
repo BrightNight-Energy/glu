@@ -3,10 +3,10 @@ name: CI/CD
 on:
   push:
     branches:
-      - '**'
+      - "**"
 
 env:
-  PYTHON_VERSION: '3.13'
+  PYTHON_VERSION: "3.13"
 
 concurrency:
   group: ${{ github.event.ref }}
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history so semantic-release can resolve commits
+          fetch-depth: 0 # Fetch all history so semantic-release can resolve commits
           token: ${{ secrets.CICD_RELEASE_GITHUB_TOKEN }}
       - uses: 1password/load-secrets-action/configure@v2
         with:

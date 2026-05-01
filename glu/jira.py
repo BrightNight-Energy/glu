@@ -14,6 +14,34 @@ from glu.config import EMAIL, JIRA_API_TOKEN, JIRA_SERVER, REPO_CONFIGS
 from glu.models import TICKET_PLACEHOLDER, IdReference, JiraUser, TicketGeneration
 from glu.utils import filterable_menu, print_error, print_panel
 
+FORBIDDEN_CREATE_ISSUETYPES = {"epic"}
+
+
+def is_forbidden_create_issuetype(issuetype: str | None) -> bool:
+    return bool(issuetype) and issuetype.strip().casefold() in FORBIDDEN_CREATE_ISSUETYPES
+
+
+def filter_creatable_issuetypes(issuetypes: list[str]) -> list[str]:
+    return [issuetype for issuetype in issuetypes if not is_forbidden_create_issuetype(issuetype)]
+
+
+def get_creatable_issuetypes_or_exit(
+    issuetype: str | None, issuetypes: list[str] | None
+) -> list[str] | None:
+    if is_forbidden_create_issuetype(issuetype):
+        print_error("Glu does not create Jira Epic tickets. Select a non-Epic issue type.")
+        raise typer.Exit(1)
+
+    if issuetypes is None:
+        return None
+
+    filtered_issuetypes = filter_creatable_issuetypes(issuetypes)
+    if not filtered_issuetypes and issuetype is None:
+        print_error("No non-Epic Jira issue types are available for ticket creation")
+        raise typer.Exit(1)
+
+    return filtered_issuetypes
+
 
 class JiraClient:
     def __init__(self):
@@ -48,6 +76,10 @@ class JiraClient:
         assignee_ref: IdReference,
         **extra_fields: dict,
     ) -> Issue:
+        if is_forbidden_create_issuetype(issuetype):
+            print_error("Glu does not create Jira Epic tickets. Select a non-Epic issue type.")
+            raise typer.Exit(1)
+
         fields = extra_fields | {
             "project": project,
             "issuetype": issuetype,
@@ -130,6 +162,8 @@ def generate_ticket_with_ai(
     requested_changes: str | None = None,
     previous_attempt: TicketGeneration | None = None,
 ) -> TicketGeneration:
+    issuetypes = get_creatable_issuetypes_or_exit(issuetype, issuetypes)
+
     ticket_data = generate_ticket(
         chat_client,
         repo_name,
