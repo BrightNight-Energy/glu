@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v2.8.0 (2026-05-01)
+
+### Bug Fixes
+
+- **jira**: Prevent epic tickets from getting created
+  ([#66](https://github.com/BrightNight-Energy/glu/pull/66),
+  [`9a76813`](https://github.com/BrightNight-Energy/glu/commit/9a768137141711ad30e7149cdc99c7b08c9fddf2))
+
+### Features
+
+- **pr**: Add --skip-generation flag to optionally skip PR description generation for update PR
+  command ([#65](https://github.com/BrightNight-Energy/glu/pull/65),
+  [`fc648a2`](https://github.com/BrightNight-Energy/glu/commit/fc648a2e2536db184d30867b91179e7b16263c73))
+
+
 ## v2.7.5 (2025-10-30)
 
 ### Bug Fixes
