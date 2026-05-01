@@ -15,6 +15,7 @@ from glu.config import JIRA_IN_PROGRESS_TRANSITION, JIRA_READY_FOR_REVIEW_TRANSI
 from glu.gh import get_github_client, prompt_for_reviewers
 from glu.jira import (
     add_jira_key_to_pr_description,
+    filter_creatable_issuetypes,
     format_jira_ticket,
     generate_ticket_with_ai,
     get_jira_client,
@@ -126,7 +127,11 @@ def create_pr(  # noqa: C901
             jira_project = jira_project or get_jira_project(jira, git.repo_name, project)
             rich.print("[grey70]Generating ticket...[/]\n")
 
-            issuetypes = jira.get_issuetypes(jira_project)
+            issuetypes = filter_creatable_issuetypes(jira.get_issuetypes(jira_project))
+            if not issuetypes:
+                print_error("No non-Epic Jira issue types are available for ticket creation.")
+                raise typer.Exit(1)
+
             ticket_data = generate_ticket_with_ai(
                 chat_client,
                 git.repo_name,

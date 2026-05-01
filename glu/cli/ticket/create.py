@@ -8,13 +8,15 @@ from InquirerPy import inquirer
 from glu.ai import get_ai_client, prompt_for_chat_provider
 from glu.config import DEFAULT_JIRA_PROJECT, PREFERENCES
 from glu.jira import (
+    filter_creatable_issuetypes,
     generate_ticket_with_ai,
     get_jira_client,
     get_jira_project,
     get_user_from_jira,
+    is_forbidden_create_issuetype,
 )
 from glu.local import get_git_client
-from glu.utils import add_generated_with_glu_tag, prompt_or_edit, suppress_traceback
+from glu.utils import add_generated_with_glu_tag, print_error, prompt_or_edit, suppress_traceback
 
 
 @suppress_traceback
@@ -42,14 +44,24 @@ def create_ticket(
     if not project:
         project = get_jira_project(jira, repo_name)
 
-    types = jira.get_issuetypes(project or "")
-    if not issue_type:
+    types = filter_creatable_issuetypes(jira.get_issuetypes(project or ""))
+    if not types:
+        print_error("No non-Epic Jira issue types are available for ticket creation.")
+        raise typer.Exit(1)
+
+    matching_issue_type = next(
+        (
+            available_type
+            for available_type in types
+            if issue_type and available_type.casefold() == issue_type.strip().casefold()
+        ),
+        None,
+    )
+
+    if not matching_issue_type or is_forbidden_create_issuetype(issue_type):
         issuetype = inquirer.select("Select type:", types).execute()
     else:
-        if issue_type.title() not in types:
-            issuetype = inquirer.select("Select type:", types).execute()
-        else:
-            issuetype = issue_type
+        issuetype = matching_issue_type
 
     if ai_prompt:
         # typer does not currently support union types

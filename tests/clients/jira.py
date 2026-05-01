@@ -55,7 +55,7 @@ class FakeJiraClient:
         ]
 
     def get_issuetypes(self, project: str) -> list[str]:
-        return ["Bug", "Story", "Spike", "Chore", "Subtask"]
+        return ["Bug", "Story", "Epic", "Spike", "Chore", "Subtask"]
 
     def get_transitions(self, ticket_id: str) -> list[str]:
         if os.getenv("IS_JIRA_TICKET_IN_TO_DO"):

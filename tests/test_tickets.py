@@ -73,6 +73,7 @@ def _create_ticket(child: spawn, with_ai: bool = False, select_project: bool = F
     assert "Spike" in plain_menu
     assert "Bug" in plain_menu
     assert "Story" in plain_menu
+    assert "Epic" not in plain_menu
 
     # Move highlight down twice to select "Story"
     child.send(Key.DOWN.value)
