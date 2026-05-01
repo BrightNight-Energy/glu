@@ -18,7 +18,7 @@ FORBIDDEN_CREATE_ISSUETYPES = {"epic"}
 
 
 def is_forbidden_create_issuetype(issuetype: str | None) -> bool:
-    return bool(issuetype) and issuetype.strip().casefold() in FORBIDDEN_CREATE_ISSUETYPES
+    return issuetype.strip().casefold() in FORBIDDEN_CREATE_ISSUETYPES if issuetype else False
 
 
 def filter_creatable_issuetypes(issuetypes: list[str]) -> list[str]:
